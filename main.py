@@ -133,6 +133,26 @@ async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
 
+    if data == "branch_all":
+        if context.user_data.get("registration_step") != "branch":
+            return
+        context.user_data.pop("branch_search", None)
+        await show_branches(query.message, context, page=0, edit=True)
+        return
+
+    if data.startswith("branch_page:"):
+        if context.user_data.get("registration_step") != "branch":
+            return
+        page = int(data.split(":", 1)[1])
+        await show_branches(
+            query.message,
+            context,
+            search=context.user_data.get("branch_search", ""),
+            page=page,
+            edit=True,
+        )
+        return
+
     if data.startswith("branch:"):
         if context.user_data.get("registration_step") not in {"branch", "branch_search"}:
             return
@@ -142,6 +162,8 @@ async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await query.message.reply_text("❌ Filial topilmadi.")
             return
         context.user_data["branch_id"] = branch_id
+        context.user_data.pop("branch_search", None)
+        context.user_data.pop("branch_page", None)
         context.user_data["registration_step"] = "position"
         keyboard = InlineKeyboardMarkup(
             [
@@ -225,20 +247,47 @@ async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
-async def show_branches(message, search: str = "") -> None:
+async def show_branches(
+    message,
+    context: ContextTypes.DEFAULT_TYPE,
+    search: str = "",
+    page: int = 0,
+    edit: bool = False,
+) -> None:
     branches = bot_db.get_branches(search)
     if not branches:
-        await message.reply_text("❌ Mos filial topilmadi. Boshqa nom bilan urinib ko‘ring.")
+        text = "❌ Mos filial topilmadi. Boshqa nom bilan urinib ko‘ring."
+        if edit:
+            await message.edit_text(text)
+        else:
+            await message.reply_text(text)
         return
+    page_size = 10
+    page_count = max(1, (len(branches) + page_size - 1) // page_size)
+    page = max(0, min(page, page_count - 1))
+    context.user_data["branch_search"] = search
+    context.user_data["branch_page"] = page
+    page_branches = branches[page * page_size : (page + 1) * page_size]
     buttons = [
         [InlineKeyboardButton(f"🏢 {branch['branch_name']}", callback_data=f"branch:{branch['id']}")]
-        for branch in branches[:80]
+        for branch in page_branches
     ]
-    buttons.append([InlineKeyboardButton("🔎 Filialni qidirish", callback_data="branch_search")])
-    await message.reply_text(
-        "🏢 Filialingizni tanlang:",
-        reply_markup=InlineKeyboardMarkup(buttons),
-    )
+    navigation: list[InlineKeyboardButton] = []
+    if page > 0:
+        navigation.append(InlineKeyboardButton("◀️ Orqaga", callback_data=f"branch_page:{page - 1}"))
+    navigation.append(InlineKeyboardButton(f"{page + 1}/{page_count}", callback_data=f"branch_page:{page}"))
+    if page < page_count - 1:
+        navigation.append(InlineKeyboardButton("Oldinga ▶️", callback_data=f"branch_page:{page + 1}"))
+    buttons.append(navigation)
+    buttons.append([InlineKeyboardButton("🔎 Qidirish", callback_data="branch_search")])
+    if search:
+        buttons.append([InlineKeyboardButton("🔄 Barcha filiallar", callback_data="branch_all")])
+    markup = InlineKeyboardMarkup(buttons)
+    text = f"🏢 Filialingizni tanlang:\n\nSahifa {page + 1}/{page_count}"
+    if edit:
+        await message.edit_text(text, reply_markup=markup)
+    else:
+        await message.reply_text(text, reply_markup=markup)
 
 
 async def document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -305,11 +354,11 @@ async def text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             return
         context.user_data["full_name"] = text_value
         context.user_data["registration_step"] = "branch"
-        await show_branches(update.message)
+        await show_branches(update.message, context)
         return
     if context.user_data.get("registration_step") == "branch_search":
         context.user_data["registration_step"] = "branch"
-        await show_branches(update.message, text_value)
+        await show_branches(update.message, context, text_value)
         return
 
     if admin_user(user_id):
