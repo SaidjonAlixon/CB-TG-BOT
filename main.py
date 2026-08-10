@@ -256,7 +256,16 @@ async def show_branches(
 ) -> None:
     branches = bot_db.get_branches(search)
     if not branches:
-        text = "❌ Mos filial topilmadi. Boshqa nom bilan urinib ko‘ring."
+        if search:
+            text = (
+                f"❌ “{search}” bo‘yicha filial topilmadi.\n\n"
+                "Boshqa filial kodi yoki nomi bilan urinib ko‘ring."
+            )
+        else:
+            text = (
+                "❌ Hozircha filiallar yuklanmagan.\n\n"
+                "Admin avval “📥 Excel yuklash” orqali filiallar faylini yuborishi kerak."
+            )
         if edit:
             await message.edit_text(text)
         else:
