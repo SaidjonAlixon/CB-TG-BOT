@@ -1,15 +1,16 @@
-# [Project name]
+# FILIAL ATTENDANCE
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Telegram bot orqali filial xodimlarining kelish-ketishini qayd etadi, smena qoidalari bo‘yicha kechikish va erta ketishni hisoblaydi hamda professional Excel hisobotlarini yaratadi.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `uv run python main.py` — Telegram botni ishga tushirish
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`
+- Optional env: `ADMIN_TELEGRAM_IDS` — vergul bilan ajratilgan Telegram ID raqamlari
 
 ## Stack
 
@@ -30,7 +31,10 @@ _Populate as you build — non-obvious choices a reader couldn't infer from the 
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Xodimlar telefon, F.I.Sh., filial, lavozim va smena orqali ro‘yxatdan o‘tadi.
+- “KELDIM” va “KETDIM” tugmalari real vaqtni saqlaydi.
+- 1-smena (08:15 / 17:00) va 2-smena (17:15 / 23:45, yarim tundan o‘tish bilan) hisoblanadi.
+- Admin filiallarni Excel’dan import qiladi va kunlik/haftalik/oylik Excel hisobotlarini oladi.
 
 ## User preferences
 

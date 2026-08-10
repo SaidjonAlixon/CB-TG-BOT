@@ -1,0 +1,1 @@
+- [Telegram logging safety](telegram-logging.md) — suppress transport INFO logs so token-bearing request URLs never enter workflow output.
