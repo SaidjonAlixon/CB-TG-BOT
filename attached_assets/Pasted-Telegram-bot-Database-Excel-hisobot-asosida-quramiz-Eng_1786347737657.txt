@@ -1,0 +1,1341 @@
+Telegram bot + Database + Excel hisobot asosida quramiz.
+
+Eng muhim o‘zgarish:
+
+Admin xodimlarni umuman yuklamaydi.
+Admin faqat filial kodi va filial nomini Excel orqali yuklaydi.
+Har bir xodim botda /start bosib, o‘z filialini, lavozimini va smenasini o‘zi tanlaydi. Shundan keyin barcha davomat ma’lumotlari avtomatik saqlanadi va oy/hafta yakunida Excel professional ko‘rinishda shakllanadi.
+
+Quyida dasturchiga berish uchun TO‘LIQ TZ.
+
+TELEGRAM DAVOMAT TIZIMI
+TO‘LIQ TEXNIK TOPSHIRIQ — TZ
+Tizim nomi:
+
+FILIAL ATTENDANCE
+
+Maqsad
+
+Filiallarda ishlaydigan:
+
+Boshqaruvchi
+Farmatsevt
+
+larning ishga kelish va ketish vaqtini Telegram orqali avtomatik qayd etish, kechikish va erta ketishni aniqlash, ishlagan vaqtini hisoblash hamda barcha ma'lumotlarni professional Excel hisobotga chiqarish.
+
+1. TIZIMNING UMUMIY ISHLASH PRINSIPI
+
+Tizim quyidagi tartibda ishlaydi:
+
+ADMIN
+   ↓
+Filiallar Excel faylini yuklaydi
+   ↓
+Filial kodi + Filial nomi databasega tushadi
+   ↓
+XODIM
+   ↓
+Telegram botga /start
+   ↓
+Telefon raqamini tasdiqlaydi
+   ↓
+Filialini tanlaydi
+   ↓
+Lavozimini tanlaydi
+   ↓
+Smenasini tanlaydi
+   ↓
+🟢 KELDIM
+   ↓
+Vaqt avtomatik qayd qilinadi
+   ↓
+🔴 KETDIM
+   ↓
+Ketish vaqti qayd qilinadi
+   ↓
+Ishlagan vaqt avtomatik hisoblanadi
+   ↓
+Database
+   ↓
+Excel hisobot
+2. ADMIN NIMA QILADI?
+
+Adminning asosiy vazifasi juda oddiy bo‘ladi.
+
+Admin:
+
+🏢 Filiallar
+
+bo‘limiga kiradi.
+
+Unda:
+
+Excel yuklash
+Filiallar ro‘yxati
+Filialni o‘chirish
+Filialni tahrirlash
+
+bo‘ladi.
+
+Xodimlarni admin qo‘shmaydi.
+
+3. FILIALLARNI EXCEL ORQALI YUKLASH
+
+Adminga maxsus Excel shablon beriladi.
+
+Excel formati:
+
+A	B
+Filial kodi	Filial nomi
+1-FILIAL	TOSHKENT-1
+2-FILIAL	GINEKOLOGIYA-2
+3-FILIAL	DARXON
+4-FILIAL	TT3-2
+5-FILIAL	ANTEY
+
+Bu yerda:
+
+A ustun
+
+Filial kodi
+
+B ustun
+
+Filial nomi
+
+4. ADMIN EXCEL YUKLAGANDA
+
+Bot:
+
+📥 Filiallar faylini yuklang
+
+deydi.
+
+Admin Excel yuboradi.
+
+Bot faylni tekshiradi.
+
+Agar to‘g‘ri bo‘lsa:
+
+✅ Fayl muvaffaqiyatli qabul qilindi.
+
+🏢 Filiallar: 14 ta
+
+Yangi qo‘shilgan: 12
+Yangilangan: 2
+Xatolik: 0
+5. EXCEL XATO BO‘LSA
+
+Masalan:
+
+Filial kodi	Filial nomi
+1-FILIAL	TOSHKENT-1
+2-FILIAL	
+	DARXON
+
+Bot:
+
+❌ Excel faylida xatolik bor.
+
+2-qator:
+Filial nomi mavjud emas.
+
+4-qator:
+Filial kodi mavjud emas.
+
+Fayl qabul qilinmadi.
+
+deydi.
+
+6. XODIMNI RO‘YXATDAN O‘TKAZISH
+
+Xodim botga kiradi.
+
+/start
+
+Bot:
+
+👋 Assalomu alaykum!
+
+FILIAL ATTENDANCE tizimiga xush kelibsiz.
+
+Davomat tizimidan foydalanish uchun
+ro‘yxatdan o‘ting.
+
+Tugma:
+
+📝 Ro‘yxatdan o‘tish
+7. XODIMNING TELEFON RAQAMI
+
+Bot:
+
+Telefon raqamingizni yuboring.
+
+Tugma:
+
+📱 Telefon raqamimni yuborish
+
+Telegram contact orqali yuboriladi.
+
+Telefon raqami databasega saqlanadi.
+
+8. F.I.SH
+
+Keyin:
+
+Ism va familiyangizni kiriting.
+
+Masalan:
+
+Aliyev Vali
+
+Saqlanadi.
+
+9. FILIAL TANLASH
+
+Keyin:
+
+🏢 Filialingizni tanlang:
+
+Botda admin yuklagan filiallar chiqadi.
+
+Masalan:
+
+🏢 TOSHKENT-1
+🏢 GINEKOLOGIYA-2
+🏢 DARXON
+🏢 TT3-2
+🏢 ANTEY
+
+Agar filiallar ko‘p bo‘lsa:
+
+🔎 Filialni qidirish
+
+ham bo‘ladi.
+
+Masalan:
+
+Tosh
+
+yozsa:
+
+🏢 TOSHKENT-1
+🏢 TOSHKENT-2
+
+chiqadi.
+
+10. LAVOZIM TANLASH
+
+Filial tanlangandan keyin:
+
+👤 Lavozimingizni tanlang:
+
+Tugmalar:
+
+👔 Boshqaruvchi
+💊 Farmatsevt
+
+Xodim ulardan birini tanlaydi.
+
+11. SMENA TANLASH
+
+Keyin:
+
+🕐 Ish smenangizni tanlang:
+
+Tugmalar:
+
+1️⃣ 1-SMENA
+2️⃣ 2-SMENA
+
+Xodim o‘z smenasini tanlaydi.
+
+12. RO‘YXATDAN O‘TISH YAKUNI
+
+Masalan:
+
+✅ Ro‘yxatdan o‘tish yakunlandi.
+
+👤 F.I.Sh:
+Aliyev Vali
+
+🏢 Filial:
+TOSHKENT-1
+
+👔 Lavozim:
+Boshqaruvchi
+
+🕐 Smena:
+1-SMENA
+
+Tugma:
+
+🏠 Bosh menyu
+13. XODIMNING ASOSIY MENYUSI
+🟢 KELDIM
+🔴 KETDIM
+
+📊 Bugungi holatim
+📅 Davomatim
+👤 Profilim
+14. KELDIM FUNKSIYASI
+
+Xodim:
+
+🟢 KELDIM
+
+tugmasini bosadi.
+
+Bot aniq vaqtni oladi.
+
+Masalan:
+
+10.08.2026
+08:12:43
+
+Databasega:
+
+arrival_time = 08:12:43
+
+saqlanadi.
+
+15. 1-SMENA QOIDASI
+
+1-smena uchun kelish nazorat vaqti:
+
+08:15
+
+Agar:
+
+08:14
+
+bo‘lsa:
+
+🟢 VAQTIDA
+
+Agar:
+
+08:15
+
+bo‘lsa:
+
+🟢 VAQTIDA
+
+Agar:
+
+08:16
+
+bo‘lsa:
+
+🔴 KECHIKDI
+
+16. KECHIKISHNI HISOBLASH
+
+Masalan:
+
+Belgilangan:
+
+08:15
+
+Xodim kelgan:
+
+08:27
+
+Tizim:
+
+🔴 Kechikdi
+
+Kechikish:
+12 daqiqa
+
+deb saqlaydi.
+
+17. XODIMGA NATIJA
+
+Xodim KELDIM bosganda:
+
+✅ KELISH QAYD ETILDI
+
+🏢 TOSHKENT-1
+
+🕐 Kelgan vaqt:
+08:27
+
+🔴 Holat:
+12 daqiqa kechikish
+18. VAQTIDA KELSA
+
+Masalan:
+
+08:12
+
+Bot:
+
+✅ KELISH QAYD ETILDI
+
+🕐 08:12
+
+🟢 Holat:
+Vaqtida
+
+deydi.
+
+19. KELDIM TUGMASINI QAYTA BOSISH
+
+Bir kunda bir marta KELDIM qilinadi.
+
+Agar xodim yana bossa:
+
+⚠️ Bugun sizning kelish vaqtingiz
+allaqachon qayd etilgan.
+
+🕐 Kelgan vaqt:
+08:12
+
+deydi.
+
+Vaqt o‘zgarmaydi.
+
+20. KETDIM FUNKSIYASI
+
+Ish kuni tugaganda:
+
+🔴 KETDIM
+
+bosiladi.
+
+Masalan:
+
+Keldi: 08:12
+Ketdi: 17:05
+
+Tizim:
+
+Ishlagan vaqt:
+08 soat 53 daqiqa
+
+deb hisoblaydi.
+
+21. ISHLAGAN VAQT FORMULASI
+Ishlagan vaqt =
+Ketgan vaqt - Kelgan vaqt
+
+Masalan:
+
+17:05 - 08:12
+= 8 soat 53 daqiqa
+22. KETDIM NATIJASI
+✅ KETISH QAYD ETILDI
+
+🕐 Kelgan:
+08:12
+
+🕐 Ketgan:
+17:05
+
+⏱ Ishlagan vaqt:
+08 soat 53 daqiqa
+
+🟢 Ish kuni yakunlandi.
+23. 2-SMENA
+
+2-smena ham xuddi shu mexanizmda ishlaydi.
+
+2-smena uchun tizimda alohida smena konfiguratsiyasi bo‘ladi.
+
+Siz bergan asosiy nazorat nuqtasi:
+
+23:45
+
+bo‘ladi.
+
+Agar xodim belgilangan ketish vaqtiga nisbatan oldin chiqsa:
+
+🔴 ERTA KETDI
+
+Agar belgilangan vaqtda yoki undan keyin chiqsa:
+
+🟢 VAQTIDA
+
+24. 2-SMENA MISOL
+
+Belgilangan:
+
+23:45
+
+Xodim:
+
+23:30
+
+ketdi.
+
+Natija:
+
+🔴 ERTA KETDI
+
+15 daqiqa oldin ketgan
+
+Agar:
+
+23:45
+
+bo‘lsa:
+
+🟢 VAQTIDA
+
+Agar:
+
+23:50
+
+bo‘lsa:
+
+🟢 VAQTIDA
+25. 2-SMENANING KELISH VAQTI
+
+2-smena uchun kelish vaqti alohida konfiguratsiya sifatida saqlanadi, chunki siz hozircha faqat 23:45 ketish nazorat vaqtini belgilagansiz.
+
+Tizimda:
+
+2-Smena
+Kirish vaqti: [sozlanadigan]
+Chiqish vaqti: 23:45
+
+bo‘ladi.
+
+Shunda keyinchalik kodni o‘zgartirmasdan vaqtni almashtirish mumkin.
+
+26. KELGAN VA KETGAN VAQT ORASIDAGI ISH SOATI
+
+Har bir xodim uchun:
+
+Kelgan vaqt
+Ketgan vaqt
+Ishlagan vaqt
+
+alohida saqlanadi.
+
+Misol:
+
+08:15
+17:15
+09:00
+27. XODIM KETDIM BOSMASA
+
+Agar xodim KETDIM bosmasa:
+
+Kelgan: 08:12
+Ketgan: —
+Ishlagan vaqt: —
+
+bo‘ladi.
+
+Tizim o‘zi taxminiy ketish vaqtini yaratmaydi.
+
+Bu juda muhim.
+
+Faqat real Telegram bosilgan vaqt hisoblanadi.
+
+28. KELDIM BOSMASA
+
+Agar xodim umuman KELDIM qilmasa:
+
+kun yakunida:
+
+❌ KELMAGAN
+
+holatiga tushadi.
+
+29. BOTDA BUGUNGI HOLAT
+
+Xodim:
+
+📊 Bugungi holatim
+
+bosadi.
+
+Natija:
+
+📊 BUGUNGI HOLATINGIZ
+
+📅 10.08.2026
+
+🏢 TOSHKENT-1
+👔 Boshqaruvchi
+🕐 1-Smena
+
+🟢 Keldi:
+08:12
+
+🔴 Ketdi:
+17:05
+
+⏱ Ishlagan:
+08:53
+
+📌 Holat:
+Vaqtida
+30. DAVOMATIM
+
+Xodim:
+
+📅 Davomatim
+
+bosadi.
+
+Bot:
+
+📊 DAVOMATIM
+
+Avgust 2026
+
+Ish kunlari: 22
+Kelgan: 21
+Kelmagan: 1
+
+Vaqtida: 17
+Kechikkan: 4
+
+Jami ishlagan:
+184 soat 32 daqiqa
+
+Jami kechikish:
+47 daqiqa
+31. ADMIN DASHBOARD
+
+Admin botga kirganda:
+
+📊 DASHBOARD
+
+📅 Bugun: 10.08.2026
+
+👥 Jami xodimlar: 126
+
+🟢 Kelgan: 108
+🔴 Kechikkan: 14
+❌ Kelmagan: 4
+
+🏢 Filiallar: 18
+
+⏱ Jami ishlangan vaqt:
+842 soat 17 daqiqa
+32. ADMINNING ASOSIY MENYUSI
+📊 Dashboard
+🏢 Filiallar
+
+📅 Hisobotlar
+📥 Excel yuklash
+
+👥 Xodimlar
+🔴 Kechikkanlar
+❌ Kelmaganlar
+
+⚙️ Sozlamalar
+
+Admin xodimni ro‘yxatdan o‘tkazmaydi.
+
+👥 Xodimlar faqat statistik ko‘rish uchun.
+
+33. ADMIN FILIALLARNI KO‘RADI
+🏢 FILIALLAR
+
+1. TOSHKENT-1
+   👥 8 xodim
+
+2. GINEKOLOGIYA-2
+   👥 6 xodim
+
+3. DARXON
+   👥 7 xodim
+34. FILIAL ICHIGA KIRISH
+
+Masalan:
+
+🏢 TOSHKENT-1
+
+bosilganda:
+
+👥 Xodimlar: 8
+
+🟢 Kelgan: 7
+🔴 Kechikkan: 1
+❌ Kelmagan: 0
+
+👔 Boshqaruvchi:
+Aliyev Vali — 🟢 08:12
+
+💊 Farmatsevtlar:
+Valiyeva Nargiza — 🟢 08:14
+Karimova Dilnoza — 🔴 08:27
+...
+35. KECHIKKANLAR
+
+Admin:
+
+🔴 Kechikkanlar
+
+bosadi.
+
+🔴 BUGUN KECHIKKANLAR
+
+1.
+👤 Aliyev Vali
+🏢 TOSHKENT-1
+👔 Boshqaruvchi
+🕐 08:27
+⏱ +12 daqiqa
+
+2.
+👤 Karimova Dilnoza
+🏢 DARXON
+💊 Farmatsevt
+🕐 08:34
+⏱ +19 daqiqa
+36. EXCEL HISOBOT — ENG MUHIM QISM
+
+Bot Excel yaratganda faqat ma'lumot chiqarib bermaydi.
+
+Excel professional dizaynda shakllantiriladi.
+
+Fayl:
+
+ATTENDANCE_AVGUST_2026.xlsx
+37. EXCEL ICHIDAGI LISTLAR
+
+Excel faylda quyidagi listlar bo‘ladi:
+
+1. Dashboard
+2. Oylik hisobot
+3. 1-hafta
+4. 2-hafta
+5. 3-hafta
+6. 4-hafta
+7. 5-hafta
+8. Kechikishlar
+9. Kelmaganlar
+10. Filiallar
+11. Xodimlar
+38. DASHBOARD EXCEL
+
+Birinchi sahifa juda chiroyli bo‘ladi.
+
+Masalan:
+
+╔════════════════════════════════════════════════════════════╗
+║                 FILIAL ATTENDANCE                          ║
+║                  AVGUST 2026                               ║
+╠════════════════════════════════════════════════════════════╣
+║                                                            ║
+║  JAMI XODIM       KELGAN       KECHIKKAN      KELMAGAN    ║
+║      126            108            14              4       ║
+║                                                            ║
+╠════════════════════════════════════════════════════════════╣
+║              UMUMIY DAVOMAT: 93.4%                        ║
+╚════════════════════════════════════════════════════════════╝
+39. EXCELDA FILIAL VA XODIMLAR
+
+Oylik hisobot listida:
+
+№	Filial	Filial nomi	Lavozim	F.I.Sh	Smena
+1	1-FILIAL	TOSHKENT-1	BOSHQ.	Aliyev Vali	1
+2	1-FILIAL	TOSHKENT-1	FARM.	Valiyeva Nargiza	1
+3	2-FILIAL	GINEKOLOGIYA-2	FARM.	Sobirov Azim	2
+40. HAFTA BO‘YICHA EXCEL
+
+Har bir hafta alohida ko‘rinadi.
+
+Masalan:
+
+1-HAFTA
+10.08.2026 — Dushanba
+11.08.2026 — Seshanba
+12.08.2026 — Chorshanba
+13.08.2026 — Payshanba
+14.08.2026 — Juma
+15.08.2026 — Shanba
+16.08.2026 — Yakshanba
+41. HAR BIR KUN UCHUN
+
+Har bir xodimga:
+
+KELDI
+KETDI
+ISH SOATI
+HOLAT
+KECHIKISH
+ERTA KETISH
+
+chiqariladi.
+
+Masalan:
+
+F.I.Sh	Keldi	Ketdi	Ish soati	Holat	Kechikish
+Aliyev Vali	08:12	17:05	08:53	🟢 Vaqtida	0
+Valiyeva Nargiza	08:27	17:01	08:34	🔴 Kechikdi	12
+Sobirov Azim	—	—	—	❌ Kelmagan	—
+42. EXCEL RANGLARI
+🟢 YASHIL
+
+Vaqtida kelgan.
+
+🔴 QIZIL
+
+Kechikkan.
+
+🟠 TO‘Q SARIQ
+
+Erta ketgan.
+
+⚪ OQ
+
+Oddiy holat.
+
+⚫ QORA
+
+Haftalar orasidagi ajratish.
+
+❌ KELMAGAN
+
+Alohida ko‘rinadigan holat.
+
+43. HAFTALAR ORASIDA QORA AJRATISH
+
+Masalan:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                  1-HAFTA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[ma'lumotlar]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                  2-HAFTA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[ma'lumotlar]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                  3-HAFTA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Har bir hafta aniq ajratiladi.
+
+44. OYLIK JAMI
+
+Har bir xodim uchun oy oxirida:
+
+Ish kunlari
+Kelgan kunlari
+Kelmagan kunlari
+Kechikkan kunlari
+Jami kechikish
+Jami ishlagan soat
+Erta ketishlar
+
+hisoblanadi.
+
+Masalan:
+
+Xodim	Ish kuni	Kelgan	Kelmagan	Kechikkan	Jami ish
+Aliyev Vali	26	25	1	4	214:32
+Valiyeva Nargiza	26	26	0	2	221:15
+45. FILIAL BO‘YICHA STATISTIKA
+
+Excel:
+
+Filial	Xodim	Kelgan	Kechikkan	Kelmagan	Davomat
+TOSHKENT-1	8	196	12	4	94.1%
+DARXON	7	175	8	3	95.2%
+46. KECHIKISHLAR LISTI
+
+Alohida:
+
+Kechikishlar
+
+sheet:
+
+Sana	Filial	F.I.Sh	Lavozim	Smena	Belgilangan	Kelgan	Kechikish
+10.08	TOSHKENT-1	Aliyev Vali	BOSHQ.	1	08:15	08:27	12 daq
+10.08	DARXON	Karimova	FARM.	1	08:15	08:34	19 daq
+47. KELMAGANLAR LISTI
+
+Kelmaganlar
+
+sheet:
+
+Sana	Filial	F.I.Sh	Lavozim	Smena	Holat
+10.08	TOSHKENT-1	Aliyev	BOSHQ.	1	❌ Kelmagan
+48. EXCEL FILIAL MA'LUMOTLARINI QAYERDAN OLADI?
+
+Admin yuklagan dastlabki Excel:
+
+A = Filial kodi
+B = Filial nomi
+
+databasega tushadi.
+
+Keyin hisobot yaratishda Excel generator shu ma'lumotlardan foydalanadi.
+
+Demak:
+
+Admin Excel
+     ↓
+Database
+     ↓
+Telegram xodim
+     ↓
+Davomat
+     ↓
+Database
+     ↓
+Excel generator
+     ↓
+Yakuniy Excel
+49. XODIM MA'LUMOTLARI QAYERDAN KELADI?
+
+Admin Excelga xodim yozmaydi.
+
+Xodimning o‘zi botda:
+
+/start
+↓
+Telefon
+↓
+F.I.Sh
+↓
+Filial
+↓
+Lavozim
+↓
+Smena
+
+orqali ro‘yxatdan o‘tadi.
+
+50. MUHIM: TELEGRAM ID
+
+Xodim ro‘yxatdan o‘tganda uning:
+
+Telegram ID
+
+avtomatik olinadi.
+
+Masalan:
+
+telegram_id = 123456789
+
+Shu sababli xodim keyingi safar botga kirganda o‘z profiliga ulanadi.
+
+51. XODIM FILIALINI O‘ZGARTIRISH
+
+Oddiy xodim o‘z filialini xohlagancha o‘zgartira olmasligi kerak.
+
+Profil:
+
+🏢 Filial:
+TOSHKENT-1
+
+bo‘ladi.
+
+O‘zgartirish kerak bo‘lsa:
+
+🔄 Filialni almashtirish
+
+so‘rovi yuboriladi.
+
+Admin tasdiqlagandan keyin o‘zgaradi.
+
+Bu soxta davomatlarning oldini oladi.
+
+52. LAVOZIMNI O‘ZGARTIRISH
+
+Xuddi shunday:
+
+👔 Boshqaruvchi
+
+ni xodim o‘zi xohlagancha:
+
+💊 Farmatsevt
+
+qila olmaydi.
+
+O‘zgarish admin tasdig‘i bilan amalga oshadi.
+
+53. SMENA
+
+Smena ham:
+
+1-Smena
+2-Smena
+
+ko‘rinishida saqlanadi.
+
+Smena davomat hisoblash qoidalarini belgilaydi.
+
+54. DATABASE
+
+Asosiy jadvallar:
+
+branches
+id
+branch_code
+branch_name
+status
+created_at
+employees
+id
+telegram_id
+phone
+full_name
+branch_id
+position
+shift
+status
+created_at
+attendance
+id
+employee_id
+date
+arrival_time
+departure_time
+worked_minutes
+arrival_status
+departure_status
+late_minutes
+early_leave_minutes
+created_at
+updated_at
+admins
+id
+telegram_id
+full_name
+role
+status
+monthly_reports
+id
+year
+month
+file_path
+created_at
+55. DAVOMATNING ASOSIY STATUSLARI
+
+Tizim quyidagi statuslardan foydalanadi:
+
+ON_TIME
+LATE
+ABSENT
+EARLY_LEAVE
+COMPLETED
+MISSING_CHECKOUT
+
+Lekin foydalanuvchiga doimo o‘zbekcha ko‘rsatiladi:
+
+🟢 Vaqtida
+🔴 Kechikdi
+❌ Kelmagan
+🟠 Erta ketdi
+✅ Ish kuni yakunlandi
+⚠️ Ketish qayd qilinmagan
+56. BOT TO‘LIQ O‘ZBEK TILIDA
+
+Barcha:
+
+tugmalar
+xabarlar
+xatolar
+Excel sarlavhalari
+hisobotlar
+dashboard
+bildirishnomalar
+
+o‘zbek tilida bo‘ladi.
+
+Masalan:
+
+❌ Attendance emas.
+
+✅ Davomat
+
+❌ Employee emas.
+
+✅ Xodim
+
+❌ Late emas.
+
+✅ Kechikdi
+
+57. ADMIN EXCEL HISOBOT OLISH
+
+Admin:
+
+📥 Excel hisobot
+
+bosadi.
+
+Keyin:
+
+📅 Bugungi
+📆 Haftalik
+📅 Oylik
+🗓 Sana oralig‘i
+
+tanlaydi.
+
+58. OYLIK HISOBOT
+
+Admin:
+
+📅 Oylik
+
+→
+
+Avgust 2026
+
+tanlaydi.
+
+Bot:
+
+⏳ Hisobot tayyorlanmoqda...
+
+Keyin:
+
+📎 FILIAL_ATTENDANCE_AVGUST_2026.xlsx
+
+yuboradi.
+
+59. EXCEL GENERATOR
+
+Excel yaratish uchun:
+
+Python + OpenPyXL
+
+ishlatiladi.
+
+U quyidagilarni avtomatik bajaradi:
+
+merged cells
+border
+alignment
+font
+number format
+vaqt formatlari
+conditional formatting
+freeze panes
+auto filter
+column width
+row height
+ranglar
+formula/statistika
+grafiklar
+dashboard
+60. EXCELDA VAQT FORMATLARI
+
+Keldi:
+
+08:15
+
+Ketdi:
+
+17:03
+
+Ishlagan:
+
+08:48
+
+Kechikish:
+
+00:12
+
+Excel vaqt sifatida saqlanadi, oddiy matn emas.
+
+61. MUHIM — HISOBOTDA XATO BO‘LMASLIGI
+
+Agar:
+
+Keldi = 08:15
+Ketdi = 17:15
+
+bo‘lsa:
+
+Ishlagan = 09:00
+
+Agar Ketdi mavjud bo‘lmasa:
+
+Ishlagan = —
+
+chiqadi.
+
+Excel noto‘g‘ri #ERROR! bermasligi kerak.
+
+62. HAFTA ANIQLASH
+
+Tizim sanaga qarab avtomatik:
+
+1-hafta
+2-hafta
+3-hafta
+4-hafta
+5-hafta
+
+ga ajratadi.
+
+Har bir hafta ichida:
+
+Sana
+Hafta kuni
+Xodim
+Keldi
+Ketdi
+Ishlagan vaqt
+Holat
+
+bo‘ladi.
+
+63. OYNI YARATISH
+
+Oy Excelda qo‘lda yaratilmaydi.
+
+Admin:
+
+📊 Oylik Excel
+
+→ Avgust 2026
+
+tanlasa, tizim mavjud database ma'lumotlaridan shu oy uchun Excel yaratadi.
+
+Alohida "oy yaratish" majburiy emas.
+
+Bu Telegram bot uchun ancha qulay.
+
+64. TARIX SAQLANISHI
+
+Masalan:
+
+Iyul 2026
+Avgust 2026
+Sentabr 2026
+
+davomatlari alohida saqlanadi.
+
+Avgust hisobotini keyin yaratganda iyulga ta'sir qilmaydi.
+
+65. REAL-TIME ISHLASH
+
+Xodim:
+
+🟢 KELDIM
+
+bosishi bilan ma'lumot databasega yoziladi.
+
+Admin dashboardni ochsa:
+
+🟢 Kelgan: 109
+
+darhol yangilanadi.
+
+66. ADMINGA AVTOMATIK KECHIKISH XABARI
+
+Tizimda ixtiyoriy notification:
+
+🔴 KECHIKISH
+
+👤 Aliyev Vali
+🏢 TOSHKENT-1
+👔 Boshqaruvchi
+
+Belgilangan: 08:15
+Kelgan: 08:27
+
+Kechikish: 12 daqiqa
+67. XAVFSIZLIK
+
+Xodim:
+
+boshqa xodim ma'lumotini ko‘rmaydi;
+boshqa filialni o‘zgartira olmaydi;
+boshqa odam nomidan kelish belgilay olmaydi;
+vaqtni qo‘lda o‘zgartira olmaydi;
+Excel databasega kira olmaydi.
+68. ADMINNING VAKOLATI
+
+Admin:
+
+🏢 Filiallar
+📊 Dashboard
+📥 Excel
+👥 Xodimlar
+🔴 Kechikishlar
+❌ Kelmaganlar
+⚙️ Sozlamalar
+
+ga ega.
+
+Ammo xodimlarni Excel orqali import qilish funksiyasi bo‘lmaydi.
+
+69. BOTNING TO‘LIQ MENYUSI
+XODIM
+🟢 KELDIM
+🔴 KETDIM
+
+📊 Bugungi holatim
+📅 Davomatim
+👤 Profilim
+ADMIN
+📊 DASHBOARD
+🏢 FILIALLAR
+
+👥 XODIMLAR
+🔴 KECHIKKANLAR
+❌ KELMAGANLAR
+
+📥 EXCEL HISOBOT
+📅 OYLIK HISOBOT
+
+⚙️ SOZLAMALAR
+70. YAKUNIY FOYDALANISH SXEMASI
+                  ADMIN
+                    │
+                    ▼
+          ┌─────────────────┐
+          │ Filial Excel    │
+          │ A = kodi         │
+          │ B = nomi         │
+          └────────┬────────┘
+                   │
+                   ▼
+              DATABASE
+                   │
+       ┌───────────┴───────────┐
+       │                       │
+       ▼                       ▼
+    XODIM 1                 XODIM 2
+       │                       │
+     /start                  /start
+       │                       │
+    Filial                  Filial
+       │                       │
+    Lavozim                 Lavozim
+       │                       │
+     Smena                   Smena
+       │                       │
+   🟢 KELDIM               🟢 KELDIM
+       │                       │
+   🔴 KETDIM                🔴 KETDIM
+       │                       │
+       └──────────┬────────────┘
+                  ▼
+              DATABASE
+                  │
+        ┌─────────┴─────────┐
+        ▼                   ▼
+    DASHBOARD             EXCEL
+                            │
+             ┌──────────────┼──────────────┐
+             ▼              ▼              ▼
+          Dashboard      Haftalar       Kechikish
+                            │
+                            ▼
+                      Oylik statistika
+71. YAKUNIY TALAB
+
+Dasturchi tayyorlagan tizimda quyidagi shart 100% bajarilishi kerak:
+
+Admin faqat filiallarni Excel orqali yuklaydi. Excelning A ustunidan filial kodi, B ustunidan filial nomi olinadi. Xodimlar admin tomonidan kiritilmaydi. Har bir xodim Telegram botga /start orqali kiradi, telefon raqami va F.I.Sh.ni kiritadi, mavjud filiallardan o‘z filialini tanlaydi, “Boshqaruvchi” yoki “Farmatsevt” lavozimini tanlaydi, 1 yoki 2-smenani tanlaydi. Shundan keyin xodim har ish kuni Telegram orqali KELDIM va KETDIM tugmalaridan foydalanadi. Tizim real vaqtni avtomatik yozadi, belgilangan smena vaqti bilan solishtirib kechikish/erta ketishni aniqlaydi, kelgan va ketgan vaqt orasidagi ishlangan vaqtni hisoblaydi. Barcha ma'lumotlar PostgreSQL bazasida saqlanadi. Admin istalgan sana, hafta yoki oy bo‘yicha professional Excel hisobotini oladi. Excelda filial, filial nomi, xodim, lavozim, smena, sana, hafta, kelgan vaqt, ketgan vaqt, ishlagan soat, kechikish, erta ketish, kelmaganlik va oylik jami statistikalar to‘liq ko‘rsatiladi. Haftalar vizual bloklarga ajratiladi, vaqtida kelish yashil, kechikish qizil, erta ketish sariq/to‘q sariq rangda ko‘rsatiladi. Excelda Dashboard, Oylik hisobot, haftalik hisobotlar, Kechikishlar, Kelmaganlar, Filiallar va Xodimlar sahifalari bo‘ladi.

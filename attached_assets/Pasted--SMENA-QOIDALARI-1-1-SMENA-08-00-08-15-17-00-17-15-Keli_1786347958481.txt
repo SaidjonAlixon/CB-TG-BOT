@@ -1,0 +1,112 @@
+🕐 SMENA QOIDALARI
+1️⃣ 1-SMENA
+
+08:00/08:15 – 17:00/17:15
+
+Kelish vaqti: 08:00–08:15
+Ketish vaqti: 17:00–17:15
+08:00–08:15 oralig‘ida kelgan → 🟢 VAQTIDA
+08:15 dan keyin kelgan → 🔴 KECHIKDI
+17:00–17:15 oralig‘ida ketgan → 🟢 VAQTIDA
+17:00 dan oldin ketgan → 🟠 ERTA KETDI
+
+Misol:
+
+Kelgan vaqt	Holat
+07:55	🟢 Vaqtida
+08:00	🟢 Vaqtida
+08:07	🟢 Vaqtida
+08:15	🟢 Vaqtida
+08:16	🔴 1 daqiqa kechikdi
+08:30	🔴 15 daqiqa kechikdi
+
+Ketish:
+
+Ketgan vaqt	Holat
+16:50	🟠 10 daqiqa erta
+17:00	🟢 Vaqtida
+17:08	🟢 Vaqtida
+17:15	🟢 Vaqtida
+17:20	🟢 Vaqtida
+2️⃣ 2-SMENA
+
+17:00/17:15 – 24:00/23:45
+
+Kelish vaqti: 17:00–17:15
+Ketish vaqti: 23:45–24:00
+17:00–17:15 oralig‘ida kelgan → 🟢 VAQTIDA
+17:15 dan keyin kelgan → 🔴 KECHIKDI
+23:45–24:00 oralig‘ida ketgan → 🟢 VAQTIDA
+23:45 dan oldin ketgan → 🟠 ERTA KETDI
+
+Misol:
+
+Kelgan vaqt	Holat
+16:55	🟢 Vaqtida
+17:00	🟢 Vaqtida
+17:10	🟢 Vaqtida
+17:15	🟢 Vaqtida
+17:16	🔴 1 daqiqa kechikdi
+17:30	🔴 15 daqiqa kechikdi
+
+Ketish:
+
+Ketgan vaqt	Holat
+23:30	🟠 15 daqiqa erta
+23:44	🟠 1 daqiqa erta
+23:45	🟢 Vaqtida
+23:52	🟢 Vaqtida
+24:00	🟢 Vaqtida
+⚠️ MUHIM
+
+Tizim 24:00 ni to‘g‘ri qayta ishlashi kerak.
+
+Texnik jihatdan 24:00 oddiy vaqt sifatida saqlanmaydi. Database hisoblashida:
+
+2-smena:
+17:00 → 00:00 (keyingi kun)
+
+sifatida ishlanadi.
+
+Masalan:
+
+10.08.2026 17:10
+        ↓
+11.08.2026 00:00
+
+Natija:
+
+6 soat 50 daqiqa
+
+bo‘ladi.
+
+⏱ ISHLAGAN VAQT
+
+Tizim oddiy ketish - kelish emas, smenaning tun yarimidan o'tishini ham hisobga oladigan mexanizm bilan ishlaydi.
+
+1-smena:
+08:10 → 17:05
+= 8 soat 55 daqiqa
+2-smena:
+17:10 → 23:55
+= 6 soat 45 daqiqa
+
+Agar:
+
+17:10 → 00:00
+
+bo‘lsa:
+
+6 soat 50 daqiqa
+
+hisoblanadi.
+
+📊 EXCELDA
+
+Excelda smena alohida ko‘rsatiladi:
+
+Filial	Xodim	Lavozim	Smena	Keldi	Holat	Ketdi	Holat	Ishlagan vaqt
+1-Filial	Aliyev Vali	Boshq.	1-smena	08:07	🟢 Vaqtida	17:08	🟢 Vaqtida	09:01
+1-Filial	Karimova Nargiza	Farm.	1-smena	08:27	🔴 +12 daq	17:03	🟢 Vaqtida	08:36
+2-Filial	Sobirov Azim	Farm.	2-smena	17:10	🟢 Vaqtida	23:40	🟠 -5 daq	06:30
+2-Filial	Valiyeva Madina	Farm.	2-smena	17:24	🔴 +9 daq	23:55	🟢 Vaqtida
