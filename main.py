@@ -690,7 +690,10 @@ def main() -> None:
     load_dotenv(override=True)
     application = build_application()
     logger.info("FILIAL ATTENDANCE bot ishga tushmoqda.")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    application.run_polling(
+        allowed_updates=Update.ALL_TYPES,
+        drop_pending_updates=True,
+    )
 
 
 if __name__ == "__main__":
