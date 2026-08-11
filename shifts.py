@@ -67,7 +67,21 @@ def fmt_time(value: datetime | None) -> str:
 def fmt_duration(minutes: int | None) -> str:
     if minutes is None:
         return "—"
-    return f"{minutes // 60:02d} soat {minutes % 60:02d} daqiqa"
+    total = max(0, int(minutes))
+    hours, mins = divmod(total, 60)
+    if hours and mins:
+        return f"{hours} soat {mins:02d} daqiqa"
+    if hours:
+        return f"{hours} soat"
+    return f"{mins} daqiqa"
+
+
+def fmt_hours_clock(minutes: int | None) -> str:
+    """Excel / qisqa ko‘rinish: 05:46"""
+    if minutes is None:
+        return "—"
+    total = max(0, int(minutes))
+    return f"{total // 60:02d}:{total % 60:02d}"
 
 
 def status_text(status: str | None) -> str:

@@ -125,9 +125,10 @@ def init_db() -> None:
             if raw_id.isdigit():
                 conn.execute(
                     """
-                    INSERT INTO admins (telegram_id, full_name)
-                    VALUES (%s, 'Administrator')
-                    ON CONFLICT (telegram_id) DO UPDATE SET status = 'active'
+                    INSERT INTO admins (telegram_id, full_name, role)
+                    VALUES (%s, 'Administrator', 'admin')
+                    ON CONFLICT (telegram_id) DO UPDATE
+                    SET status = 'active', role = 'admin'
                     """,
                     (int(raw_id),),
                 )
@@ -154,12 +155,83 @@ def persistence_stats() -> dict[str, int]:
 
 
 def is_admin(telegram_id: int) -> bool:
+    """To‘liq yoki yordamchi admin."""
+    return get_admin_role(telegram_id) is not None
+
+
+def get_admin_role(telegram_id: int) -> str | None:
     with _connect() as conn:
         row = conn.execute(
-            "SELECT 1 FROM admins WHERE telegram_id = %s AND status = 'active'",
+            """
+            SELECT role FROM admins
+            WHERE telegram_id = %s AND status = 'active'
+            """,
             (telegram_id,),
         ).fetchone()
-        return row is not None
+    if not row:
+        return None
+    role = str(row["role"] or "admin").strip().lower()
+    return role if role in {"admin", "helper"} else "admin"
+
+
+def is_full_admin(telegram_id: int) -> bool:
+    return get_admin_role(telegram_id) == "admin"
+
+
+def is_helper_admin(telegram_id: int) -> bool:
+    return get_admin_role(telegram_id) == "helper"
+
+
+def list_helper_admins() -> list[dict[str, Any]]:
+    with _connect() as conn:
+        return conn.execute(
+            """
+            SELECT telegram_id, full_name, status, created_at
+            FROM admins
+            WHERE role = 'helper' AND status = 'active'
+            ORDER BY created_at
+            """
+        ).fetchall()
+
+
+def add_helper_admin(telegram_id: int, full_name: str = "Yordamchi admin") -> tuple[bool, str]:
+    """Yordamchi admin qo‘shadi. To‘liq adminni pastga tushirmaydi."""
+    with _connect() as conn:
+        existing = conn.execute(
+            "SELECT role, status FROM admins WHERE telegram_id = %s",
+            (telegram_id,),
+        ).fetchone()
+        if existing and existing["role"] == "admin" and existing["status"] == "active":
+            return False, "Bu ID allaqachon to‘liq admin."
+        conn.execute(
+            """
+            INSERT INTO admins (telegram_id, full_name, role, status)
+            VALUES (%s, %s, 'helper', 'active')
+            ON CONFLICT (telegram_id) DO UPDATE SET
+                full_name = EXCLUDED.full_name,
+                role = 'helper',
+                status = 'active'
+            """,
+            (telegram_id, full_name.strip() or "Yordamchi admin"),
+        )
+    return True, "Yordamchi admin qo‘shildi."
+
+
+def remove_helper_admin(telegram_id: int) -> tuple[bool, str]:
+    with _connect() as conn:
+        existing = conn.execute(
+            "SELECT role FROM admins WHERE telegram_id = %s AND status = 'active'",
+            (telegram_id,),
+        ).fetchone()
+        if not existing:
+            return False, "Bunday faol yordamchi admin topilmadi."
+        if existing["role"] != "helper":
+            return False, "To‘liq adminni shu yerdan o‘chirib bo‘lmaydi."
+        conn.execute(
+            "UPDATE admins SET status = 'inactive' WHERE telegram_id = %s AND role = 'helper'",
+            (telegram_id,),
+        )
+    return True, "Yordamchi admin o‘chirildi."
 
 
 def get_employee(telegram_id: int) -> dict[str, Any] | None:

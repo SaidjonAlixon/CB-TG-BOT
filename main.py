@@ -61,8 +61,13 @@ ADMIN_MENU = [
     ["👥 XODIMLAR", "🔴 KECHIKKANLAR"],
     ["❌ KELMAGANLAR", "📥 EXCEL HISOBOT"],
     ["📥 Excel yuklash", "⚙️ SOZLAMALAR"],
-    ["📝 So‘rovlar"],
+    ["📝 So‘rovlar", "👤 Yordamchi adminlar"],
 ]
+HELPER_MENU = [
+    ["👥 XODIMLAR", "🔴 KECHIKKANLAR"],
+    ["📥 EXCEL HISOBOT"],
+]
+HELPER_ALLOWED = {"👥 XODIMLAR", "🔴 KECHIKKANLAR", "📥 EXCEL HISOBOT", "📅 Oylik hisobot"}
 
 
 def menu_keyboard(rows: list[list[str]]) -> ReplyKeyboardMarkup:
@@ -73,15 +78,30 @@ def admin_user(user_id: int) -> bool:
     return bot_db.is_admin(user_id)
 
 
+def full_admin_user(user_id: int) -> bool:
+    return bot_db.is_full_admin(user_id)
+
+
+def helper_admin_user(user_id: int) -> bool:
+    return bot_db.is_helper_admin(user_id)
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     if not user or not update.message:
         return
     context.user_data.clear()
-    if admin_user(user.id):
+    if full_admin_user(user.id):
         await update.message.reply_text(
             "📊 FILIAL ATTENDANCE admin paneliga xush kelibsiz.",
             reply_markup=menu_keyboard(ADMIN_MENU),
+        )
+        return
+    if helper_admin_user(user.id):
+        await update.message.reply_text(
+            "👤 Yordamchi admin paneliga xush kelibsiz.\n"
+            "Xodimlar, kechikkanlar va Excel hisobotdan foydalanishingiz mumkin.",
+            reply_markup=menu_keyboard(HELPER_MENU),
         )
         return
     employee = bot_db.get_employee(user.id)
@@ -103,9 +123,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def whoami(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message and update.effective_user:
+        role = bot_db.get_admin_role(update.effective_user.id)
+        role_line = {
+            "admin": "Rol: to‘liq admin",
+            "helper": "Rol: yordamchi admin",
+        }.get(role or "", "Rol: oddiy foydalanuvchi")
         await update.message.reply_text(
             f"Sizning Telegram ID raqamingiz: {update.effective_user.id}\n"
-            "Admin qilish uchun shu ID ni bot sozlamasiga qo‘shing."
+            f"{role_line}\n"
+            "Yordamchi admin qilish uchun asosiy admin shu ID ni qo‘shadi."
         )
 
 
@@ -224,10 +250,30 @@ async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     if data.startswith("branch_view:"):
-        if not admin_user(user.id):
+        if not full_admin_user(user.id):
             return
         branch_id = int(data.split(":", 1)[1])
         await show_branch(query.message, branch_id)
+        return
+
+    if data == "helper_add":
+        if not full_admin_user(user.id):
+            return
+        context.user_data["admin_state"] = "helper_add"
+        await query.message.reply_text(
+            "👤 Yordamchi admin Telegram ID raqamini yuboring.\n"
+            "Masalan: 7517807386\n\n"
+            "ID ni /whoami orqali olish mumkin."
+        )
+        return
+
+    if data.startswith("helper_remove:"):
+        if not full_admin_user(user.id):
+            return
+        helper_id = int(data.split(":", 1)[1])
+        ok, info = bot_db.remove_helper_admin(helper_id)
+        await query.message.reply_text(("✅ " if ok else "❌ ") + info)
+        await show_helper_admins(query.message)
         return
 
 
@@ -301,7 +347,7 @@ async def show_branches(
 
 
 async def document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not update.message or not update.effective_user or not admin_user(update.effective_user.id):
+    if not update.message or not update.effective_user or not full_admin_user(update.effective_user.id):
         return
     if context.user_data.get("admin_state") != "branch_excel":
         await update.message.reply_text("Avval “📥 Excel yuklash” tugmasini bosing.")
@@ -393,7 +439,7 @@ async def employee_text(update: Update, context: ContextTypes.DEFAULT_TYPE, text
             )
             return
         row = bot_db.record_arrival(employee["id"], current.date(), current, status, late)
-        result_line = status_text(status) + (f" ({late} daqiqa)" if late else "")
+        result_line = status_text(status) + (f" ({fmt_duration(late)})" if late else "")
         await update.message.reply_text(  # type: ignore[union-attr]
             "✅ KELISH QAYD ETILDI\n\n"
             f"🏢 {employee['branch_name']}\n"
@@ -413,7 +459,7 @@ async def employee_text(update: Update, context: ContextTypes.DEFAULT_TYPE, text
         if not saved:
             await update.message.reply_text("⚠️ Ketish vaqti allaqachon qayd etilgan.")  # type: ignore[union-attr]
             return
-        early_line = status_text(status) + (f" ({early} daqiqa oldin)" if early else "")
+        early_line = status_text(status) + (f" ({fmt_duration(early)} oldin)" if early else "")
         await update.message.reply_text(  # type: ignore[union-attr]
             "✅ KETISH QAYD ETILDI\n\n"
             f"🕐 Kelgan: {fmt_time(row['arrival_at'])}\n"
@@ -469,7 +515,7 @@ async def attendance_summary(message, employee: dict) -> None:
         f"🟢 Kelgan: {sum(1 for r in mine if r['arrival_at'])}\n"
         f"🔴 Kechikkan: {sum(1 for r in mine if r['arrival_status'] == 'LATE')}\n"
         f"⏱ Jami ishlagan: {fmt_duration(worked)}\n"
-        f"⌛ Jami kechikish: {late} daqiqa"
+        f"⌛ Jami kechikish: {fmt_duration(late)}"
     )
 
 
@@ -486,6 +532,35 @@ async def profile(message, employee: dict) -> None:
 
 async def admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE, value: str) -> None:
     message = update.message
+    user_id = update.effective_user.id  # type: ignore[union-attr]
+    is_full = full_admin_user(user_id)
+    is_helper = helper_admin_user(user_id)
+
+    if context.user_data.get("admin_state") == "helper_add":
+        if not is_full:
+            return
+        raw = value.strip()
+        menu_labels = {btn for row in ADMIN_MENU for btn in row}
+        if raw in menu_labels:
+            context.user_data.pop("admin_state", None)
+        elif not raw.isdigit():
+            await message.reply_text("❌ Faqat raqamli Telegram ID yuboring. Masalan: 7517807386")
+            return
+        else:
+            ok, info = bot_db.add_helper_admin(int(raw))
+            context.user_data.pop("admin_state", None)
+            await message.reply_text(("✅ " if ok else "❌ ") + info)
+            await show_helper_admins(message)
+            return
+
+    if is_helper and not is_full and value not in HELPER_ALLOWED:
+        await message.reply_text(
+            "⛔ Bu bo‘lim faqat asosiy admin uchun.\n"
+            "Sizda: Xodimlar, Kechikkanlar, Excel hisobot.",
+            reply_markup=menu_keyboard(HELPER_MENU),
+        )
+        return
+
     if value in {"📥 EXCEL HISOBOT", "📅 Oylik hisobot"}:
         await message.reply_text(
             "Hisobot turini tanlang:",
@@ -499,6 +574,9 @@ async def admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE, value: 
         )
         return
     if value == "📥 Excel yuklash":
+        if not is_full:
+            await message.reply_text("⛔ Bu amal faqat asosiy admin uchun.")
+            return
         context.user_data["admin_state"] = "branch_excel"
         await message.reply_text(
             "📥 Filiallar Excel faylini yuboring.\n\n"
@@ -506,9 +584,13 @@ async def admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE, value: 
         )
         return
     if value == "📊 DASHBOARD":
+        if not is_full:
+            return
         await dashboard(message)
         return
     if value == "🏢 FILIALLAR":
+        if not is_full:
+            return
         await branches(message)
         return
     if value == "👥 XODIMLAR":
@@ -525,9 +607,13 @@ async def admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE, value: 
         await status_list(message, "late")
         return
     if value == "❌ KELMAGANLAR":
+        if not is_full:
+            return
         await status_list(message, "absent")
         return
     if value == "⚙️ SOZLAMALAR":
+        if not is_full:
+            return
         await message.reply_text(
             "⚙️ SOZLAMALAR\n\n"
             "1-smena: kelish 08:15 gacha, ketish 17:00 dan oldin — erta.\n"
@@ -536,6 +622,8 @@ async def admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE, value: 
         )
         return
     if value == "📝 So‘rovlar":
+        if not is_full:
+            return
         requests = bot_db.list_pending_requests()
         if not requests:
             await message.reply_text("📝 Kutilayotgan so‘rovlar yo‘q.")
@@ -545,8 +633,42 @@ async def admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE, value: 
             for idx, row in enumerate(requests, 1)
         ))
         return
-    await message.reply_text("Admin menyusidan kerakli tugmani tanlang.", reply_markup=menu_keyboard(ADMIN_MENU))
+    if value == "👤 Yordamchi adminlar":
+        if not is_full:
+            return
+        await show_helper_admins(message)
+        return
+    menu = ADMIN_MENU if is_full else HELPER_MENU
+    await message.reply_text("Menyudan kerakli tugmani tanlang.", reply_markup=menu_keyboard(menu))
 
+
+async def show_helper_admins(message) -> None:
+    helpers = bot_db.list_helper_admins()
+    lines = [
+        "👤 YORDAMCHI ADMINLAR",
+        "",
+        "Ular faqat: Xodimlar, Kechikkanlar, Excel hisobot.",
+        "",
+    ]
+    buttons: list[list[InlineKeyboardButton]] = [
+        [InlineKeyboardButton("➕ ID qo‘shish", callback_data="helper_add")],
+    ]
+    if helpers:
+        for row in helpers:
+            lines.append(f"• {row['full_name']} — `{row['telegram_id']}`")
+            buttons.append([
+                InlineKeyboardButton(
+                    f"🗑 O‘chirish {row['telegram_id']}",
+                    callback_data=f"helper_remove:{row['telegram_id']}",
+                )
+            ])
+    else:
+        lines.append("Hozircha yordamchi admin yo‘q.")
+    await message.reply_text(
+        "\n".join(lines),
+        reply_markup=InlineKeyboardMarkup(buttons),
+        parse_mode="Markdown",
+    )
 
 async def dashboard(message) -> None:
     rows = bot_db.get_today_rows(now_local().date())
@@ -611,7 +733,7 @@ async def status_list(message, kind: str) -> None:
         return
     lines = [title, ""]
     for idx, row in enumerate(selected, 1):
-        extra = f"+{row['late_minutes']} daqiqa" if kind == "late" else "Kelmagan"
+        extra = f"+{fmt_duration(row['late_minutes'])}" if kind == "late" else "Kelmagan"
         lines.append(f"{idx}. 👤 {row['full_name']}\n🏢 {row['branch_name']}\n👔 {row['position']}\n🕐 {fmt_time(row.get('arrival_at'))} — {extra}\n")
     await message.reply_text("\n".join(lines))
 

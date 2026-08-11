@@ -12,7 +12,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 import bot_db
-from shifts import fmt_time, status_text
+from shifts import fmt_hours_clock, fmt_time, status_text
 
 
 NAVY = "172B4D"
@@ -88,12 +88,12 @@ def _row_for(employee: dict[str, Any], day: date, record: dict[str, Any] | None)
         "Ketdi": fmt_time(record.get("departure_at")),
         "Ketish holati": status_text(departure_status) if departure_status else "—",
         "Ishlagan vaqt": (
-            f"{(record.get('worked_minutes') or 0) // 60:02d}:{(record.get('worked_minutes') or 0) % 60:02d}"
+            fmt_hours_clock(record.get("worked_minutes"))
             if record.get("worked_minutes") is not None
             else "—"
         ),
-        "Kechikish (daq.)": record.get("late_minutes") or 0,
-        "Erta ketish (daq.)": record.get("early_leave_minutes") or 0,
+        "Kechikish (soat)": fmt_hours_clock(record.get("late_minutes") or 0),
+        "Erta ketish (soat)": fmt_hours_clock(record.get("early_leave_minutes") or 0),
     }
 
 
@@ -103,8 +103,8 @@ def _write_rows(ws, rows: list[dict[str, Any]], headers: list[str], start_row: i
             cell = ws.cell(row_idx, col_idx, row.get(header, "—"))
             if header == "Sana" and isinstance(cell.value, date):
                 cell.number_format = "dd.mm.yyyy"
-            if header in {"Kechikish (daq.)", "Erta ketish (daq.)"}:
-                cell.number_format = "0"
+            if header in {"Kechikish (soat)", "Erta ketish (soat)", "Ishlagan vaqt"}:
+                cell.alignment = Alignment(horizontal="center", vertical="center")
             if row.get("Kelish holati", "").startswith("🟢"):
                 cell.fill = PatternFill("solid", fgColor=GREEN)
             elif row.get("Kelish holati", "").startswith("🔴"):
@@ -159,8 +159,8 @@ def build_report(start: date, end: date, label: str) -> BytesIO:
     monthly = wb.create_sheet("Oylik hisobot")
     monthly_headers = [
         "№", "Filial kodi", "Filial nomi", "F.I.Sh", "Lavozim", "Smena",
-        "Ish kunlari", "Kelgan", "Kelmagan", "Kechikkan", "Jami kechikish",
-        "Jami ishlagan (daq.)", "Erta ketish",
+        "Ish kunlari", "Kelgan", "Kelmagan", "Kechikkan", "Jami kechikish (soat)",
+        "Jami ishlagan (soat)", "Erta ketish (soat)",
     ]
     _style_sheet(monthly, f"Oylik hisobot: {label}", len(monthly_headers))
     _header(monthly, 2, monthly_headers)
@@ -170,17 +170,19 @@ def build_report(start: date, end: date, label: str) -> BytesIO:
         values = [
             idx, row["branch_code"], row["branch_name"], row["full_name"], row["position"],
             f"{row['shift']}-smena", days_count, row["arrived"],
-            days_count - row["arrived"], row["late_days"], row["late_minutes"],
-            row["worked_minutes"], row["early_minutes"],
+            days_count - row["arrived"], row["late_days"],
+            fmt_hours_clock(row["late_minutes"]),
+            fmt_hours_clock(row["worked_minutes"]),
+            fmt_hours_clock(row["early_minutes"]),
         ]
         for col, value in enumerate(values, 1):
             monthly.cell(idx + 2, col, value)
-    _finish(monthly, {1: 6, 2: 16, 3: 22, 4: 24, 5: 18, 6: 12, 7: 12, 8: 10, 9: 12, 10: 12, 11: 16, 12: 20, 13: 14})
+    _finish(monthly, {1: 6, 2: 16, 3: 22, 4: 24, 5: 18, 6: 12, 7: 12, 8: 10, 9: 12, 10: 12, 11: 20, 12: 20, 13: 18})
 
     daily_headers = [
         "Sana", "Hafta", "Filial kodi", "Filial nomi", "F.I.Sh", "Lavozim", "Smena",
         "Keldi", "Kelish holati", "Ketdi", "Ketish holati", "Ishlagan vaqt",
-        "Kechikish (daq.)", "Erta ketish (daq.)",
+        "Kechikish (soat)", "Erta ketish (soat)",
     ]
     for week_index, week_start in enumerate(range(0, len(days), 7), 1):
         week_days = days[week_start : week_start + 7]
@@ -202,7 +204,7 @@ def build_report(start: date, end: date, label: str) -> BytesIO:
                 "Sana": row["Sana"], "Filial": row["Filial nomi"], "F.I.Sh": row["F.I.Sh"],
                 "Lavozim": row["Lavozim"], "Smena": row["Smena"],
                 "Belgilangan": "08:15" if row["Smena"].startswith("1") else "17:15",
-                "Keldi": row["Keldi"], "Kechikish": f"{row['Kechikish (daq.)']} daq.",
+                "Keldi": row["Keldi"], "Kechikish": row["Kechikish (soat)"],
             })
     _write_rows(late_ws, late_rows, late_headers)
     _finish(late_ws, {1: 13, 2: 22, 3: 24, 4: 18, 5: 11, 6: 15, 7: 12, 8: 16})
