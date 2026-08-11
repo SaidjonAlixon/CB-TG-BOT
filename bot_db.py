@@ -86,6 +86,17 @@ def _connect() -> psycopg.Connection:
     return conn
 
 
+# Bitta Telegram polling instance uchun (Railway + lokal to‘qnashuvini oldini oladi)
+BOT_INSTANCE_LOCK_KEY = 874_512_309
+
+
+def acquire_bot_instance_lock() -> psycopg.Connection:
+    """Faqat bitta process polling qilsin. Ulanish ochiq turganda lock saqlanadi."""
+    conn = psycopg.connect(_database_url(), autocommit=True)
+    conn.execute("SELECT pg_advisory_lock(%s)", (BOT_INSTANCE_LOCK_KEY,))
+    return conn
+
+
 def init_db() -> None:
     with _connect() as conn:
         conn.execute(SCHEMA_SQL)

@@ -641,6 +641,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def post_init(application: Application) -> None:
+    await application.bot.delete_webhook(drop_pending_updates=True)
     await application.bot.set_my_commands([
         BotCommand("start", "Botni boshlash"),
         BotCommand("whoami", "Telegram ID raqamini ko‘rish"),
@@ -674,7 +675,6 @@ def build_application() -> Application:
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not token:
         raise RuntimeError("TELEGRAM_BOT_TOKEN maxfiy sozlamasi topilmadi.")
-    wait_for_database()
     application = Application.builder().token(token).post_init(post_init).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("whoami", whoami))
@@ -688,12 +688,18 @@ def build_application() -> Application:
 
 def main() -> None:
     load_dotenv(override=True)
-    application = build_application()
-    logger.info("FILIAL ATTENDANCE bot ishga tushmoqda.")
-    application.run_polling(
-        allowed_updates=Update.ALL_TYPES,
-        drop_pending_updates=True,
-    )
+    wait_for_database()
+    logger.info("Bot instance lock kutilyapti (faqat 1 ta polling)...")
+    lock_conn = bot_db.acquire_bot_instance_lock()
+    try:
+        application = build_application()
+        logger.info("FILIAL ATTENDANCE bot ishga tushmoqda.")
+        application.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True,
+        )
+    finally:
+        lock_conn.close()
 
 
 if __name__ == "__main__":
