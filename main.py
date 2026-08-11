@@ -6,6 +6,7 @@ import os
 from datetime import date, datetime, timedelta
 from io import BytesIO
 
+from dotenv import load_dotenv
 from openpyxl import load_workbook
 from telegram import (
     BotCommand,
@@ -646,11 +647,34 @@ async def post_init(application: Application) -> None:
     ])
 
 
+def wait_for_database(attempts: int = 30, delay_seconds: float = 2.0) -> None:
+    """Railway’da Postgres servisi botdan keyinroq tayyor bo‘lishi mumkin."""
+    import time
+
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            bot_db.init_db()
+            if attempt > 1:
+                logger.info("Database ulanishi muvaffaqiyatli (%s-urinish).", attempt)
+            return
+        except Exception as exc:  # noqa: BLE001 - startup retry across drivers/network
+            last_error = exc
+            logger.warning(
+                "Database tayyor emas (%s/%s): %s",
+                attempt,
+                attempts,
+                exc,
+            )
+            time.sleep(delay_seconds)
+    raise RuntimeError(f"Database ulanilmadi: {last_error}") from last_error
+
+
 def build_application() -> Application:
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not token:
         raise RuntimeError("TELEGRAM_BOT_TOKEN maxfiy sozlamasi topilmadi.")
-    bot_db.init_db()
+    wait_for_database()
     application = Application.builder().token(token).post_init(post_init).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("whoami", whoami))
@@ -663,6 +687,7 @@ def build_application() -> Application:
 
 
 def main() -> None:
+    load_dotenv()
     application = build_application()
     logger.info("FILIAL ATTENDANCE bot ishga tushmoqda.")
     application.run_polling(allowed_updates=Update.ALL_TYPES)

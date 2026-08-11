@@ -50,3 +50,12 @@ Thumbs.db
 __pycache__/
 *.pyc
 reports/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Local SQLite fallback
+*.db
+filial_attendance.db

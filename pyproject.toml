@@ -6,5 +6,6 @@ requires-python = ">=3.13"
 dependencies = [
     "openpyxl>=3.1.5",
     "psycopg[binary]>=3.3.4",
+    "python-dotenv>=1.0.0",
     "python-telegram-bot>=22.8",
 ]

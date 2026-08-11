@@ -68,11 +68,18 @@ CREATE INDEX IF NOT EXISTS attendance_employee_idx ON attendance (employee_id);
 """
 
 
-def _connect() -> psycopg.Connection:
-    url = os.environ.get("DATABASE_URL")
+def _database_url() -> str:
+    url = os.environ.get("DATABASE_URL", "").strip()
     if not url:
         raise RuntimeError("DATABASE_URL sozlanmagan.")
-    return psycopg.connect(url, row_factory=dict_row)
+    # Railway sometimes injects postgres:// — psycopg3 expects postgresql://
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://") :]
+    return url
+
+
+def _connect() -> psycopg.Connection:
+    return psycopg.connect(_database_url(), row_factory=dict_row)
 
 
 def init_db() -> None:

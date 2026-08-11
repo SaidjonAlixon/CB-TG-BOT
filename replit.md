@@ -4,13 +4,24 @@ Telegram bot orqali filial xodimlarining kelish-ketishini qayd etadi, smena qoid
 
 ## Run & Operate
 
-- `uv run python main.py` — Telegram botni ishga tushirish
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `python main.py` — Telegram botni lokal ishga tushirish (`.env` kerak)
+- `uv run python main.py` — xuddi shu, uv orqali
 - Required env: `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`
 - Optional env: `ADMIN_TELEGRAM_IDS` — vergul bilan ajratilgan Telegram ID raqamlari
+
+## Railway deploy
+
+1. Railway projectda **PostgreSQL** bo‘lsin.
+2. Bot service yarating (GitHub repo yoki `railway up`).
+3. Bot service **Variables**:
+   - `TELEGRAM_BOT_TOKEN` — BotFather token
+   - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}` (Variable Reference)
+   - `ADMIN_TELEGRAM_IDS` — admin Telegram ID(lar)
+4. Build: `Dockerfile` / `railway.toml` orqali avtomatik.
+5. Start command: `python main.py` (worker; HTTP port kerak emas).
+6. Deploy keyin Logs’da `Application started` ko‘rinsin.
+
+Ichki `postgres.railway.internal` faqat Railway ichida ishlaydi. Lokal uchun Public URL yoki alohida Postgres kerak.
 
 ## Stack
 

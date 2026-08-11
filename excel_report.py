@@ -23,6 +23,12 @@ ORANGE = "FCE4D6"
 LIGHT = "F4F7FB"
 WHITE = "FFFFFF"
 THIN = Side(style="thin", color="D9E2F2")
+EXCEL_DURATION_FORMAT = "[h]:mm"
+
+
+def _duration(minutes: int | None) -> timedelta:
+    """Convert stored minutes to a real Excel duration value."""
+    return timedelta(minutes=max(0, minutes or 0))
 
 
 def _style_sheet(ws, title: str, max_col: int) -> None:
