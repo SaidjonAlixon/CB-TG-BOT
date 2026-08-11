@@ -54,14 +54,15 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 EMPLOYEE_MENU = [
     ["🟢 KELDIM", "🔴 KETDIM"],
     ["📊 Bugungi holatim", "📅 Davomatim"],
-    ["👤 Profilim"],
+    ["👤 Profilim", "🏢 Filialni o‘zgartirish"],
 ]
 ADMIN_MENU = [
     ["📊 DASHBOARD", "🏢 FILIALLAR"],
     ["👥 XODIMLAR", "🔴 KECHIKKANLAR"],
     ["❌ KELMAGANLAR", "📥 EXCEL HISOBOT"],
     ["📥 Excel yuklash", "⚙️ SOZLAMALAR"],
-    ["📝 So‘rovlar", "👤 Yordamchi adminlar"],
+    ["📝 So‘rovlar", "👑 Adminlar"],
+    ["👤 Yordamchi adminlar"],
 ]
 HELPER_MENU = [
     ["👥 XODIMLAR", "🔴 KECHIKKANLAR"],
@@ -152,35 +153,66 @@ async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
 
-    if data == "branch_search":
-        context.user_data["registration_step"] = "branch_search"
+    if data in {"reg_search", "branch_search", "chg_search"}:
+        step = context.user_data.get("registration_step")
+        mode = context.user_data.get("branch_mode")
+        if data == "chg_search" or mode == "change":
+            if context.user_data.get("employee_step") not in {"change_branch", "change_branch_search"}:
+                return
+            context.user_data["employee_step"] = "change_branch_search"
+        elif step not in {"branch", "branch_search"}:
+            return
+        else:
+            context.user_data["registration_step"] = "branch_search"
         await query.message.reply_text(
             "🔎 Filial kodi yoki nomini yozing:",
             reply_markup=ReplyKeyboardRemove(),
         )
         return
 
-    if data == "branch_all":
+    if data in {"reg_all", "branch_all", "chg_all"}:
+        mode = context.user_data.get("branch_mode", "register")
+        if mode == "change":
+            if context.user_data.get("employee_step") not in {"change_branch", "change_branch_search"}:
+                return
+            context.user_data.pop("branch_search", None)
+            context.user_data["employee_step"] = "change_branch"
+            await show_branches(query.message, context, page=0, edit=True, mode="change")
+            return
         if context.user_data.get("registration_step") != "branch":
             return
         context.user_data.pop("branch_search", None)
-        await show_branches(query.message, context, page=0, edit=True)
+        await show_branches(query.message, context, page=0, edit=True, mode="register")
         return
 
-    if data.startswith("branch_page:"):
+    if data.startswith("reg_page:") or data.startswith("branch_page:") or data.startswith("chg_page:"):
+        page = int(data.split(":", 1)[1])
+        mode = "change" if data.startswith("chg_") else context.user_data.get("branch_mode", "register")
+        if mode == "change":
+            if context.user_data.get("employee_step") not in {"change_branch", "change_branch_search"}:
+                return
+            await show_branches(
+                query.message,
+                context,
+                search=context.user_data.get("branch_search", ""),
+                page=page,
+                edit=True,
+                mode="change",
+            )
+            return
         if context.user_data.get("registration_step") != "branch":
             return
-        page = int(data.split(":", 1)[1])
         await show_branches(
             query.message,
             context,
             search=context.user_data.get("branch_search", ""),
             page=page,
             edit=True,
+            mode="register",
         )
         return
 
-    if data.startswith("branch:"):
+    if data.startswith("reg_branch:") or data.startswith("branch:"):
         if context.user_data.get("registration_step") not in {"branch", "branch_search"}:
             return
         branch_id = int(data.split(":", 1)[1])
@@ -202,6 +234,63 @@ async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             f"🏢 Tanlangan filial: {branch['branch_name']}\n\n"
             "👤 Lavozimingizni tanlang:",
             reply_markup=keyboard,
+        )
+        return
+
+    if data.startswith("chg_branch:"):
+        if context.user_data.get("employee_step") not in {"change_branch", "change_branch_search"}:
+            return
+        employee = bot_db.get_employee(user.id)
+        if not employee:
+            await query.message.reply_text("Avval /start orqali ro‘yxatdan o‘ting.")
+            return
+        branch_id = int(data.split(":", 1)[1])
+        branch = bot_db.get_branch(branch_id)
+        if not branch:
+            await query.message.reply_text("❌ Filial topilmadi.")
+            return
+        context.user_data["change_branch_id"] = branch_id
+        context.user_data["employee_step"] = "change_shift"
+        context.user_data.pop("branch_search", None)
+        keyboard = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("1️⃣ 1-SMENA", callback_data="chg_shift:1")],
+                [InlineKeyboardButton("2️⃣ 2-SMENA", callback_data="chg_shift:2")],
+                [InlineKeyboardButton(f"🕐 Joriy smena ({employee['shift']})", callback_data=f"chg_shift:{employee['shift']}")],
+            ]
+        )
+        await query.message.reply_text(
+            f"🏢 Yangi filial: {branch['branch_name']}\n"
+            f"Eski filial: {employee['branch_name']}\n\n"
+            "🕐 Shu filial uchun smenani tanlang:\n"
+            "Keyingi KELDIM/KETDIM shu filial va smena bo‘yicha hisoblanadi.",
+            reply_markup=keyboard,
+        )
+        return
+
+    if data.startswith("chg_shift:"):
+        if context.user_data.get("employee_step") != "change_shift":
+            return
+        employee = bot_db.get_employee(user.id)
+        if not employee:
+            await query.message.reply_text("Avval /start orqali ro‘yxatdan o‘ting.")
+            return
+        branch_id = context.user_data.get("change_branch_id")
+        if not branch_id:
+            await query.message.reply_text("Avval filialni tanlang.")
+            return
+        shift = data.split(":", 1)[1]
+        updated = bot_db.update_employee_branch_shift(int(employee["id"]), int(branch_id), shift)
+        context.user_data.clear()
+        if not updated:
+            await query.message.reply_text("❌ Filialni yangilab bo‘lmadi.")
+            return
+        await query.message.reply_text(
+            "✅ Filial yangilandi.\n\n"
+            f"🏢 Filial: {updated['branch_name']}\n"
+            f"🕐 Smena: {updated['shift']}-SMENA\n\n"
+            "Endi kelish-ketish vaqtlari shu filialga hisoblanadi.",
+            reply_markup=menu_keyboard(EMPLOYEE_MENU),
         )
         return
 
@@ -276,6 +365,27 @@ async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await show_helper_admins(query.message)
         return
 
+    if data == "admin_add":
+        if not full_admin_user(user.id):
+            return
+        context.user_data["admin_state"] = "admin_add"
+        await query.message.reply_text(
+            "👑 Admin Telegram ID raqamini yuboring.\n"
+            f"Ko‘pi bilan {bot_db.MAX_MANUAL_FULL_ADMINS} ta admin qo‘shish mumkin.\n"
+            "Masalan: 7517807386\n\n"
+            "ID ni /whoami orqali olish mumkin."
+        )
+        return
+
+    if data.startswith("admin_remove:"):
+        if not full_admin_user(user.id):
+            return
+        admin_id = int(data.split(":", 1)[1])
+        ok, info = bot_db.remove_full_admin(admin_id)
+        await query.message.reply_text(("✅ " if ok else "❌ ") + info)
+        await show_full_admins(query.message)
+        return
+
 
 async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message or not update.effective_user:
@@ -300,7 +410,10 @@ async def show_branches(
     search: str = "",
     page: int = 0,
     edit: bool = False,
+    mode: str = "register",
 ) -> None:
+    """mode=register — ro‘yxatdan o‘tish; mode=change — filialni o‘zgartirish."""
+    prefix = "chg" if mode == "change" else "reg"
     branches = bot_db.get_branches(search)
     if not branches:
         if search:
@@ -323,23 +436,25 @@ async def show_branches(
     page = max(0, min(page, page_count - 1))
     context.user_data["branch_search"] = search
     context.user_data["branch_page"] = page
+    context.user_data["branch_mode"] = mode
     page_branches = branches[page * page_size : (page + 1) * page_size]
     buttons = [
-        [InlineKeyboardButton(f"🏢 {branch['branch_name']}", callback_data=f"branch:{branch['id']}")]
+        [InlineKeyboardButton(f"🏢 {branch['branch_name']}", callback_data=f"{prefix}_branch:{branch['id']}")]
         for branch in page_branches
     ]
     navigation: list[InlineKeyboardButton] = []
     if page > 0:
-        navigation.append(InlineKeyboardButton("◀️ Orqaga", callback_data=f"branch_page:{page - 1}"))
-    navigation.append(InlineKeyboardButton(f"{page + 1}/{page_count}", callback_data=f"branch_page:{page}"))
+        navigation.append(InlineKeyboardButton("◀️ Orqaga", callback_data=f"{prefix}_page:{page - 1}"))
+    navigation.append(InlineKeyboardButton(f"{page + 1}/{page_count}", callback_data=f"{prefix}_page:{page}"))
     if page < page_count - 1:
-        navigation.append(InlineKeyboardButton("Oldinga ▶️", callback_data=f"branch_page:{page + 1}"))
+        navigation.append(InlineKeyboardButton("Oldinga ▶️", callback_data=f"{prefix}_page:{page + 1}"))
     buttons.append(navigation)
-    buttons.append([InlineKeyboardButton("🔎 Qidirish", callback_data="branch_search")])
+    buttons.append([InlineKeyboardButton("🔎 Qidirish", callback_data=f"{prefix}_search")])
     if search:
-        buttons.append([InlineKeyboardButton("🔄 Barcha filiallar", callback_data="branch_all")])
+        buttons.append([InlineKeyboardButton("🔄 Barcha filiallar", callback_data=f"{prefix}_all")])
     markup = InlineKeyboardMarkup(buttons)
-    text = f"🏢 Filialingizni tanlang:\n\nSahifa {page + 1}/{page_count}"
+    title = "🏢 Yangi filialni tanlang:" if mode == "change" else "🏢 Filialingizni tanlang:"
+    text = f"{title}\n\nSahifa {page + 1}/{page_count}"
     if edit:
         await message.edit_text(text, reply_markup=markup)
     else:
@@ -410,11 +525,15 @@ async def text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             return
         context.user_data["full_name"] = text_value
         context.user_data["registration_step"] = "branch"
-        await show_branches(update.message, context)
+        await show_branches(update.message, context, mode="register")
         return
     if context.user_data.get("registration_step") == "branch_search":
         context.user_data["registration_step"] = "branch"
-        await show_branches(update.message, context, text_value)
+        await show_branches(update.message, context, text_value, mode="register")
+        return
+    if context.user_data.get("employee_step") == "change_branch_search":
+        context.user_data["employee_step"] = "change_branch"
+        await show_branches(update.message, context, text_value, mode="change")
         return
 
     if admin_user(user_id):
@@ -477,6 +596,24 @@ async def employee_text(update: Update, context: ContextTypes.DEFAULT_TYPE, text
         return
     if text_value == "👤 Profilim":
         await profile(update.message, employee)
+        return
+    if text_value == "🏢 Filialni o‘zgartirish":
+        open_row = bot_db.find_open_attendance(employee["id"], now_local().date())
+        if open_row:
+            await update.message.reply_text(  # type: ignore[union-attr]
+                "⚠️ Bugun kelish qayd etilgan, lekin ketish yo‘q.\n"
+                "Avval “🔴 KETDIM” bosing, keyin filialni o‘zgartiring."
+            )
+            return
+        context.user_data.clear()
+        context.user_data["employee_step"] = "change_branch"
+        await update.message.reply_text(  # type: ignore[union-attr]
+            f"Hozirgi filial: {employee['branch_name']}\n"
+            f"Smena: {employee['shift']}-SMENA\n\n"
+            "Yangi filialni tanlang. Keyin smenani tanlaysiz —\n"
+            "kelish/ketish shu filialga hisoblanadi."
+        )
+        await show_branches(update.message, context, mode="change")
         return
     await update.message.reply_text("Kerakli tugmani tanlang.", reply_markup=menu_keyboard(EMPLOYEE_MENU))  # type: ignore[union-attr]
 
@@ -551,6 +688,23 @@ async def admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE, value: 
             context.user_data.pop("admin_state", None)
             await message.reply_text(("✅ " if ok else "❌ ") + info)
             await show_helper_admins(message)
+            return
+
+    if context.user_data.get("admin_state") == "admin_add":
+        if not is_full:
+            return
+        raw = value.strip()
+        menu_labels = {btn for row in ADMIN_MENU for btn in row}
+        if raw in menu_labels:
+            context.user_data.pop("admin_state", None)
+        elif not raw.isdigit():
+            await message.reply_text("❌ Faqat raqamli Telegram ID yuboring. Masalan: 7517807386")
+            return
+        else:
+            ok, info = bot_db.add_full_admin(int(raw))
+            context.user_data.pop("admin_state", None)
+            await message.reply_text(("✅ " if ok else "❌ ") + info)
+            await show_full_admins(message)
             return
 
     if is_helper and not is_full and value not in HELPER_ALLOWED:
@@ -638,8 +792,50 @@ async def admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE, value: 
             return
         await show_helper_admins(message)
         return
+    if value == "👑 Adminlar":
+        if not is_full:
+            return
+        await show_full_admins(message)
+        return
     menu = ADMIN_MENU if is_full else HELPER_MENU
     await message.reply_text("Menyudan kerakli tugmani tanlang.", reply_markup=menu_keyboard(menu))
+
+
+async def show_full_admins(message) -> None:
+    manuals = bot_db.list_manual_full_admins()
+    env_ids = sorted(bot_db.env_admin_ids())
+    lines = [
+        "👑 ADMINLAR",
+        "",
+        f"ID orqali qo‘shish limitti: {len(manuals)}/{bot_db.MAX_MANUAL_FULL_ADMINS}",
+        "",
+        "Asosiy adminlar (ENV):",
+    ]
+    if env_ids:
+        for admin_id in env_ids:
+            lines.append(f"• `{admin_id}`")
+    else:
+        lines.append("• Yo‘q")
+    lines.extend(["", "ID orqali qo‘shilgan adminlar:"])
+    buttons: list[list[InlineKeyboardButton]] = [
+        [InlineKeyboardButton("➕ ID qo‘shish", callback_data="admin_add")],
+    ]
+    if manuals:
+        for row in manuals:
+            lines.append(f"• {row['full_name']} — `{row['telegram_id']}`")
+            buttons.append([
+                InlineKeyboardButton(
+                    f"🗑 O‘chirish {row['telegram_id']}",
+                    callback_data=f"admin_remove:{row['telegram_id']}",
+                )
+            ])
+    else:
+        lines.append("• Hali qo‘shilmagan")
+    await message.reply_text(
+        "\n".join(lines),
+        reply_markup=InlineKeyboardMarkup(buttons),
+        parse_mode="Markdown",
+    )
 
 
 async def show_helper_admins(message) -> None:

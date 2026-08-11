@@ -182,6 +182,81 @@ def is_helper_admin(telegram_id: int) -> bool:
     return get_admin_role(telegram_id) == "helper"
 
 
+MAX_MANUAL_FULL_ADMINS = 2
+
+
+def env_admin_ids() -> set[int]:
+    ids: set[int] = set()
+    for raw_id in os.environ.get("ADMIN_TELEGRAM_IDS", "").split(","):
+        raw_id = raw_id.strip()
+        if raw_id.isdigit():
+            ids.add(int(raw_id))
+    return ids
+
+
+def list_manual_full_admins() -> list[dict[str, Any]]:
+    """ENV dan tashqari, ID orqali qo‘shilgan to‘liq adminlar."""
+    env_ids = env_admin_ids()
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT telegram_id, full_name, status, created_at
+            FROM admins
+            WHERE role = 'admin' AND status = 'active'
+            ORDER BY created_at
+            """
+        ).fetchall()
+    return [row for row in rows if int(row["telegram_id"]) not in env_ids]
+
+
+def add_full_admin(telegram_id: int, full_name: str = "Administrator") -> tuple[bool, str]:
+    """ID orqali to‘liq admin qo‘shadi (maksimal 2 ta)."""
+    if telegram_id in env_admin_ids():
+        return False, "Bu ID allaqachon asosiy (ENV) admin."
+    manuals = list_manual_full_admins()
+    if telegram_id not in {int(row["telegram_id"]) for row in manuals} and len(manuals) >= MAX_MANUAL_FULL_ADMINS:
+        return False, f"Ko‘pi bilan {MAX_MANUAL_FULL_ADMINS} ta admin qo‘shish mumkin."
+    with _connect() as conn:
+        existing = conn.execute(
+            "SELECT role, status FROM admins WHERE telegram_id = %s",
+            (telegram_id,),
+        ).fetchone()
+        if existing and existing["role"] == "helper" and existing["status"] == "active":
+            # Yordamchini to‘liq adminga ko‘tarish
+            pass
+        conn.execute(
+            """
+            INSERT INTO admins (telegram_id, full_name, role, status)
+            VALUES (%s, %s, 'admin', 'active')
+            ON CONFLICT (telegram_id) DO UPDATE SET
+                full_name = EXCLUDED.full_name,
+                role = 'admin',
+                status = 'active'
+            """,
+            (telegram_id, full_name.strip() or "Administrator"),
+        )
+    return True, "Admin qo‘shildi. U /start bosib to‘liq admin panelini ochadi."
+
+
+def remove_full_admin(telegram_id: int) -> tuple[bool, str]:
+    if telegram_id in env_admin_ids():
+        return False, "Asosiy (ENV) adminni o‘chirib bo‘lmaydi."
+    with _connect() as conn:
+        existing = conn.execute(
+            "SELECT role FROM admins WHERE telegram_id = %s AND status = 'active'",
+            (telegram_id,),
+        ).fetchone()
+        if not existing:
+            return False, "Bunday faol admin topilmadi."
+        if existing["role"] != "admin":
+            return False, "Bu ID to‘liq admin emas."
+        conn.execute(
+            "UPDATE admins SET status = 'inactive' WHERE telegram_id = %s AND role = 'admin'",
+            (telegram_id,),
+        )
+    return True, "Admin o‘chirildi."
+
+
 def list_helper_admins() -> list[dict[str, Any]]:
     with _connect() as conn:
         return conn.execute(
@@ -335,6 +410,29 @@ def create_employee(
             (telegram_id, phone, full_name, branch_id, position, shift),
         ).fetchone()
     return get_employee_by_id(row["id"])  # type: ignore[index]
+
+
+def update_employee_branch_shift(
+    employee_id: int,
+    branch_id: int,
+    shift: str,
+) -> dict[str, Any] | None:
+    """Xodim filialini (va smenasini) yangilaydi — keyingi davomat shu filialga hisoblanadi."""
+    if shift not in {"1", "2"}:
+        raise ValueError("shift 1 yoki 2 bo‘lishi kerak")
+    with _connect() as conn:
+        row = conn.execute(
+            """
+            UPDATE employees
+            SET branch_id = %s, shift = %s
+            WHERE id = %s AND status = 'active'
+            RETURNING id
+            """,
+            (branch_id, shift, employee_id),
+        ).fetchone()
+    if not row:
+        return None
+    return get_employee_by_id(int(row["id"]))
 
 
 def get_attendance_for_date(employee_id: int, attendance_date: date) -> dict[str, Any] | None:
