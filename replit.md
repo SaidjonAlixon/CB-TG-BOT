@@ -21,6 +21,13 @@ Telegram bot orqali filial xodimlarining kelish-ketishini qayd etadi, smena qoid
 5. Start command: `python main.py` (worker; HTTP port kerak emas).
 6. Deploy keyin Logs’da `Application started` ko‘rinsin.
 
+### Ma’lumotlar saqlanishi
+
+- Barcha filial / xodim / davomat / admin yozuvlari **PostgreSQL**da.
+- Bot restart, redeploy yoki kodni qayta o‘rnatish — **mavjud yozuvlarni o‘chirmaydi** (`CREATE TABLE IF NOT EXISTS`).
+- O‘chadi faqat: Railway’da **Postgres service yoki volume** ni o‘chirib tashlasangiz, yoki bazani qo‘lda DROP qilsangiz.
+- Shu sabab Postgres’ni o‘chirmang; faqat bot service’ni redeploy qiling.
+
 Ichki `postgres.railway.internal` faqat Railway ichida ishlaydi. Lokal uchun Public URL yoki alohida Postgres kerak.
 
 ## Stack

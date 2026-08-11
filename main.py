@@ -656,8 +656,16 @@ def wait_for_database(attempts: int = 30, delay_seconds: float = 2.0) -> None:
     for attempt in range(1, attempts + 1):
         try:
             bot_db.init_db()
-            if attempt > 1:
-                logger.info("Database ulanishi muvaffaqiyatli (%s-urinish).", attempt)
+            stats = bot_db.persistence_stats()
+            logger.info(
+                "PostgreSQL tayyor — ma'lumotlar saqlanadi "
+                "(filial=%s, xodim=%s, davomat=%s, admin=%s). "
+                "Bot restart/redeploy qilinsa ham bazadagi yozuvlar o'chmaydi.",
+                stats["branches"],
+                stats["employees"],
+                stats["attendance_rows"],
+                stats["admins"],
+            )
             return
         except Exception as exc:  # noqa: BLE001 - startup retry across drivers/network
             last_error = exc

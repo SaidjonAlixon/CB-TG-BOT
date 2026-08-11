@@ -67,6 +67,12 @@ CREATE TABLE IF NOT EXISTS filial.change_requests (
 
 CREATE INDEX IF NOT EXISTS attendance_date_idx ON filial.attendance (attendance_date);
 CREATE INDEX IF NOT EXISTS attendance_employee_idx ON filial.attendance (employee_id);
+
+CREATE TABLE IF NOT EXISTS filial.schema_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 """
 
 
@@ -98,8 +104,21 @@ def acquire_bot_instance_lock() -> psycopg.Connection:
 
 
 def init_db() -> None:
+    """Jadvallarni yaratadi yoki mavjudlarini qoldiradi.
+
+    CREATE IF NOT EXISTS ishlatiladi — restart / redeploy / qayta o‘rnatishda
+    filiallar, xodimlar va davomat HECH QACHON o‘chirilmaydi.
+    """
     with _connect() as conn:
         conn.execute(SCHEMA_SQL)
+        conn.execute(
+            """
+            INSERT INTO schema_meta (key, value)
+            VALUES ('schema_version', '1')
+            ON CONFLICT (key) DO UPDATE
+            SET value = EXCLUDED.value, updated_at = NOW()
+            """
+        )
         admin_ids = os.environ.get("ADMIN_TELEGRAM_IDS", "")
         for raw_id in admin_ids.split(","):
             raw_id = raw_id.strip()
@@ -112,6 +131,26 @@ def init_db() -> None:
                     """,
                     (int(raw_id),),
                 )
+
+
+def persistence_stats() -> dict[str, int]:
+    """Saqlangan asosiy yozuvlar soni (restart diagnostikasi uchun)."""
+    with _connect() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                (SELECT COUNT(*)::int FROM branches) AS branches,
+                (SELECT COUNT(*)::int FROM employees WHERE status = 'active') AS employees,
+                (SELECT COUNT(*)::int FROM attendance) AS attendance_rows,
+                (SELECT COUNT(*)::int FROM admins WHERE status = 'active') AS admins
+            """
+        ).fetchone()
+    return {
+        "branches": int(row["branches"]),
+        "employees": int(row["employees"]),
+        "attendance_rows": int(row["attendance_rows"]),
+        "admins": int(row["admins"]),
+    }
 
 
 def is_admin(telegram_id: int) -> bool:
