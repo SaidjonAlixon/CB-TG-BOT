@@ -687,7 +687,7 @@ def build_application() -> Application:
 
 
 def main() -> None:
-    load_dotenv()
+    load_dotenv(override=True)
     application = build_application()
     logger.info("FILIAL ATTENDANCE bot ishga tushmoqda.")
     application.run_polling(allowed_updates=Update.ALL_TYPES)

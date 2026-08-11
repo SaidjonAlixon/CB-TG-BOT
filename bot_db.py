@@ -9,7 +9,9 @@ from psycopg.rows import dict_row
 
 
 SCHEMA_SQL = """
-CREATE TABLE IF NOT EXISTS branches (
+CREATE SCHEMA IF NOT EXISTS filial;
+
+CREATE TABLE IF NOT EXISTS filial.branches (
     id SERIAL PRIMARY KEY,
     branch_code TEXT NOT NULL UNIQUE,
     branch_name TEXT NOT NULL,
@@ -17,21 +19,21 @@ CREATE TABLE IF NOT EXISTS branches (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS employees (
+CREATE TABLE IF NOT EXISTS filial.employees (
     id SERIAL PRIMARY KEY,
     telegram_id BIGINT NOT NULL UNIQUE,
     phone TEXT NOT NULL,
     full_name TEXT NOT NULL,
-    branch_id INTEGER NOT NULL REFERENCES branches(id),
+    branch_id INTEGER NOT NULL REFERENCES filial.branches(id),
     position TEXT NOT NULL,
     shift TEXT NOT NULL CHECK (shift IN ('1', '2')),
     status TEXT NOT NULL DEFAULT 'active',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS attendance (
+CREATE TABLE IF NOT EXISTS filial.attendance (
     id SERIAL PRIMARY KEY,
-    employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_id INTEGER NOT NULL REFERENCES filial.employees(id) ON DELETE CASCADE,
     attendance_date DATE NOT NULL,
     arrival_at TIMESTAMPTZ,
     departure_at TIMESTAMPTZ,
@@ -45,7 +47,7 @@ CREATE TABLE IF NOT EXISTS attendance (
     UNIQUE (employee_id, attendance_date)
 );
 
-CREATE TABLE IF NOT EXISTS admins (
+CREATE TABLE IF NOT EXISTS filial.admins (
     telegram_id BIGINT PRIMARY KEY,
     full_name TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'admin',
@@ -53,9 +55,9 @@ CREATE TABLE IF NOT EXISTS admins (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS change_requests (
+CREATE TABLE IF NOT EXISTS filial.change_requests (
     id SERIAL PRIMARY KEY,
-    employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_id INTEGER NOT NULL REFERENCES filial.employees(id) ON DELETE CASCADE,
     request_type TEXT NOT NULL,
     requested_value TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
@@ -63,8 +65,8 @@ CREATE TABLE IF NOT EXISTS change_requests (
     reviewed_at TIMESTAMPTZ
 );
 
-CREATE INDEX IF NOT EXISTS attendance_date_idx ON attendance (attendance_date);
-CREATE INDEX IF NOT EXISTS attendance_employee_idx ON attendance (employee_id);
+CREATE INDEX IF NOT EXISTS attendance_date_idx ON filial.attendance (attendance_date);
+CREATE INDEX IF NOT EXISTS attendance_employee_idx ON filial.attendance (employee_id);
 """
 
 
@@ -79,7 +81,9 @@ def _database_url() -> str:
 
 
 def _connect() -> psycopg.Connection:
-    return psycopg.connect(_database_url(), row_factory=dict_row)
+    conn = psycopg.connect(_database_url(), row_factory=dict_row)
+    conn.execute("SET search_path TO filial, public")
+    return conn
 
 
 def init_db() -> None:
