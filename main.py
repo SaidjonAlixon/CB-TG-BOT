@@ -60,9 +60,9 @@ ADMIN_MENU = [
     ["📊 DASHBOARD", "🏢 FILIALLAR"],
     ["👥 XODIMLAR", "🔴 KECHIKKANLAR"],
     ["❌ KELMAGANLAR", "📥 EXCEL HISOBOT"],
-    ["📥 Excel yuklash", "⚙️ SOZLAMALAR"],
-    ["📝 So‘rovlar", "👑 Adminlar"],
-    ["👤 Yordamchi adminlar"],
+    ["📥 Excel yuklash", "📅 Ish kunlari"],
+    ["⚙️ SOZLAMALAR", "📝 So‘rovlar"],
+    ["👑 Adminlar", "👤 Yordamchi adminlar"],
 ]
 HELPER_MENU = [
     ["👥 XODIMLAR", "🔴 KECHIKKANLAR"],
@@ -386,6 +386,52 @@ async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await show_full_admins(query.message)
         return
 
+    if data.startswith("wd_toggle:"):
+        if not full_admin_user(user.id):
+            return
+        weekday = int(data.split(":", 1)[1])
+        current = next(
+            (row for row in bot_db.get_work_weekdays() if row["weekday"] == weekday),
+            None,
+        )
+        if current is None:
+            return
+        bot_db.set_work_weekday(weekday, not current["is_work"])
+        await show_work_days_settings(query.message, edit=True)
+        return
+
+    if data == "wd_add_off":
+        if not full_admin_user(user.id):
+            return
+        context.user_data["admin_state"] = "work_day_off"
+        await query.message.reply_text(
+            "📅 Dam olish / bayram sanasini yuboring.\n"
+            "Format: DD.MM.YYYY\nMasalan: 01.09.2026"
+        )
+        return
+
+    if data == "wd_add_on":
+        if not full_admin_user(user.id):
+            return
+        context.user_data["admin_state"] = "work_day_on"
+        await query.message.reply_text(
+            "📅 Qo‘shimcha ish kuni sanasini yuboring.\n"
+            "Format: DD.MM.YYYY\nMasalan: 16.08.2026"
+        )
+        return
+
+    if data.startswith("wd_clear:"):
+        if not full_admin_user(user.id):
+            return
+        raw = data.split(":", 1)[1]
+        try:
+            day = date.fromisoformat(raw)
+        except ValueError:
+            return
+        bot_db.clear_work_day_override(day)
+        await show_work_days_settings(query.message, edit=True)
+        return
+
 
 async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message or not update.effective_user:
@@ -559,11 +605,15 @@ async def employee_text(update: Update, context: ContextTypes.DEFAULT_TYPE, text
             return
         row = bot_db.record_arrival(employee["id"], current.date(), current, status, late)
         result_line = status_text(status) + (f" ({fmt_duration(late)})" if late else "")
+        work_note = ""
+        if not bot_db.is_work_day(current.date()):
+            work_note = "\n\nℹ️ Bugun oddiy ish kuni emas (admin belgilagan)."
         await update.message.reply_text(  # type: ignore[union-attr]
             "✅ KELISH QAYD ETILDI\n\n"
             f"🏢 {employee['branch_name']}\n"
             f"🕐 Kelgan vaqt: {fmt_time(current)}\n"
             f"📌 Holat: {result_line}"
+            f"{work_note}"
         )
         return
     if text_value == "🔴 KETDIM":
@@ -643,12 +693,13 @@ async def attendance_summary(message, employee: dict) -> None:
         end = current.date()
     rows = bot_db.get_attendance_range(start, end)
     mine = [row for row in rows if row["employee_id"] == employee["id"]]
+    work_days = bot_db.list_work_days(start, end)
     worked = sum(row["worked_minutes"] or 0 for row in mine)
     late = sum(row["late_minutes"] or 0 for row in mine)
     await message.reply_text(
         f"📊 DAVOMATIM\n\n"
         f"📅 {current.strftime('%B %Y')}\n"
-        f"📆 Ish kunlari: {(end - start).days + 1}\n"
+        f"📆 Ish kunlari: {len(work_days)}\n"
         f"🟢 Kelgan: {sum(1 for r in mine if r['arrival_at'])}\n"
         f"🔴 Kechikkan: {sum(1 for r in mine if r['arrival_status'] == 'LATE')}\n"
         f"⏱ Jami ishlagan: {fmt_duration(worked)}\n"
@@ -705,6 +756,29 @@ async def admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE, value: 
             context.user_data.pop("admin_state", None)
             await message.reply_text(("✅ " if ok else "❌ ") + info)
             await show_full_admins(message)
+            return
+
+    if context.user_data.get("admin_state") in {"work_day_off", "work_day_on"}:
+        if not is_full:
+            return
+        menu_labels = {btn for row in ADMIN_MENU for btn in row}
+        if value.strip() in menu_labels:
+            context.user_data.pop("admin_state", None)
+        else:
+            parsed = _parse_uz_date(value.strip())
+            if not parsed:
+                await message.reply_text("❌ Sana formati noto‘g‘ri. Masalan: 01.09.2026")
+                return
+            is_work = context.user_data.get("admin_state") == "work_day_on"
+            bot_db.set_work_day_override(
+                parsed,
+                is_work=is_work,
+                note="ish kuni" if is_work else "dam olish",
+            )
+            context.user_data.pop("admin_state", None)
+            kind = "ish kuni" if is_work else "dam olish"
+            await message.reply_text(f"✅ {parsed.strftime('%d.%m.%Y')} — {kind} deb belgilandi.")
+            await show_work_days_settings(message)
             return
 
     if is_helper and not is_full and value not in HELPER_ALLOWED:
@@ -772,8 +846,14 @@ async def admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE, value: 
             "⚙️ SOZLAMALAR\n\n"
             "1-smena: kelish 08:15 gacha, ketish 17:00 dan oldin — erta.\n"
             "2-smena: kelish 17:15 gacha, ketish 23:45 dan oldin — erta.\n"
-            "2-smena 00:00 gacha bo‘lgan vaqtni keyingi kun sifatida hisoblaydi."
+            "2-smena 00:00 gacha bo‘lgan vaqtni keyingi kun sifatida hisoblaydi.\n\n"
+            "Ish kunlarini “📅 Ish kunlari” menyusidan belgilang."
         )
+        return
+    if value == "📅 Ish kunlari":
+        if not is_full:
+            return
+        await show_work_days_settings(message)
         return
     if value == "📝 So‘rovlar":
         if not is_full:
@@ -866,16 +946,86 @@ async def show_helper_admins(message) -> None:
         parse_mode="Markdown",
     )
 
+
+def _parse_uz_date(value: str) -> date | None:
+    for fmt in ("%d.%m.%Y", "%d/%m/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+async def show_work_days_settings(message, edit: bool = False) -> None:
+    weekdays = bot_db.get_work_weekdays()
+    overrides = bot_db.list_work_day_overrides(limit=12)
+    today = now_local().date()
+    lines = [
+        "📅 ISH KUNLARI",
+        "",
+        f"Bugun ({today.strftime('%d.%m.%Y')}): "
+        f"{'✅ ish kuni' if bot_db.is_work_day(today) else '❌ dam olish'}",
+        "",
+        "Haftalik qoida (bosib yoqing/o‘chiring):",
+    ]
+    buttons: list[list[InlineKeyboardButton]] = []
+    row_btns: list[InlineKeyboardButton] = []
+    for item in weekdays:
+        mark = "✅" if item["is_work"] else "❌"
+        short = item["name"][:2]
+        row_btns.append(
+            InlineKeyboardButton(
+                f"{mark} {short}",
+                callback_data=f"wd_toggle:{item['weekday']}",
+            )
+        )
+        if len(row_btns) == 4:
+            buttons.append(row_btns)
+            row_btns = []
+    if row_btns:
+        buttons.append(row_btns)
+    buttons.append([
+        InlineKeyboardButton("➕ Dam olish sanasi", callback_data="wd_add_off"),
+        InlineKeyboardButton("➕ Ish kuni sanasi", callback_data="wd_add_on"),
+    ])
+    if overrides:
+        lines.extend(["", "Maxsus sanalar:"])
+        for row in overrides:
+            day = row["work_date"]
+            if hasattr(day, "strftime"):
+                day_s = day.strftime("%d.%m.%Y")
+                iso = day.isoformat()
+            else:
+                day_s = str(day)
+                iso = str(day)
+            kind = "ish" if row["is_work"] else "dam"
+            lines.append(f"• {day_s} — {kind}")
+            buttons.append([
+                InlineKeyboardButton(f"🗑 {day_s}", callback_data=f"wd_clear:{iso}")
+            ])
+    text = "\n".join(lines)
+    markup = InlineKeyboardMarkup(buttons)
+    if edit:
+        try:
+            await message.edit_text(text, reply_markup=markup)
+            return
+        except Exception:
+            pass
+    await message.reply_text(text, reply_markup=markup)
+
+
 async def dashboard(message) -> None:
-    rows = bot_db.get_today_rows(now_local().date())
+    today = now_local().date()
+    rows = bot_db.get_today_rows(today)
     total = len(rows)
     arrived = sum(1 for row in rows if row.get("arrival_at"))
     late = sum(1 for row in rows if row.get("arrival_status") == "LATE")
-    absent = total - arrived
+    absent = total - arrived if bot_db.is_work_day(today) else 0
     worked = sum(row.get("worked_minutes") or 0 for row in rows)
+    day_label = "✅ ish kuni" if bot_db.is_work_day(today) else "❌ dam olish"
     await message.reply_text(
         f"📊 DASHBOARD\n\n"
-        f"📅 Bugun: {now_local().strftime('%d.%m.%Y')}\n"
+        f"📅 Bugun: {now_local().strftime('%d.%m.%Y')} ({day_label})\n"
         f"👥 Jami xodimlar: {total}\n"
         f"🟢 Kelgan: {arrived}\n"
         f"🔴 Kechikkan: {late}\n"
@@ -917,7 +1067,14 @@ async def show_branch(message, branch_id: int) -> None:
 
 
 async def status_list(message, kind: str) -> None:
-    rows = bot_db.get_today_rows(now_local().date())
+    today = now_local().date()
+    if kind == "absent" and not bot_db.is_work_day(today):
+        await message.reply_text(
+            "❌ BUGUN KELMAGANLAR\n\n"
+            "Bugun ish kuni emas — kelmaganlar hisoblanmaydi."
+        )
+        return
+    rows = bot_db.get_today_rows(today)
     if kind == "late":
         selected = [row for row in rows if row.get("arrival_status") == "LATE"]
         title = "🔴 BUGUN KECHIKKANLAR"

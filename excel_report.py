@@ -64,7 +64,8 @@ def _finish(ws, widths: dict[int, int]) -> None:
 
 
 def _dates(start: date, end: date) -> list[date]:
-    return [start + timedelta(days=i) for i in range((end - start).days + 1)]
+    """Hisobot uchun faqat admin belgilagan ish kunlari."""
+    return bot_db.list_work_days(start, end)
 
 
 def _attendance_map(records: list[dict[str, Any]]) -> dict[tuple[int, date], dict[str, Any]]:

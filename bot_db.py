@@ -73,6 +73,18 @@ CREATE TABLE IF NOT EXISTS filial.schema_meta (
     value TEXT NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS filial.work_weekdays (
+    weekday SMALLINT PRIMARY KEY CHECK (weekday BETWEEN 0 AND 6),
+    is_work BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS filial.work_day_overrides (
+    work_date DATE PRIMARY KEY,
+    is_work BOOLEAN NOT NULL,
+    note TEXT NOT NULL DEFAULT '',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 """
 
 
@@ -132,6 +144,16 @@ def init_db() -> None:
                     """,
                     (int(raw_id),),
                 )
+        # Default: Dushanba–Shanba ish kuni, Yakshanba dam olish
+        for weekday in range(7):
+            conn.execute(
+                """
+                INSERT INTO work_weekdays (weekday, is_work)
+                VALUES (%s, %s)
+                ON CONFLICT (weekday) DO NOTHING
+                """,
+                (weekday, weekday != 6),
+            )
 
 
 def persistence_stats() -> dict[str, int]:
@@ -630,3 +652,127 @@ def branch_employee_count(branch_id: int) -> int:
             (branch_id,),
         ).fetchone()
         return int(row["count"])  # type: ignore[index]
+
+
+WEEKDAY_NAMES_UZ = {
+    0: "Dushanba",
+    1: "Seshanba",
+    2: "Chorshanba",
+    3: "Payshanba",
+    4: "Juma",
+    5: "Shanba",
+    6: "Yakshanba",
+}
+
+
+def get_work_weekdays() -> list[dict[str, Any]]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT weekday, is_work FROM work_weekdays ORDER BY weekday"
+        ).fetchall()
+    by_day = {int(row["weekday"]): bool(row["is_work"]) for row in rows}
+    return [
+        {
+            "weekday": day,
+            "name": WEEKDAY_NAMES_UZ[day],
+            "is_work": by_day.get(day, day != 6),
+        }
+        for day in range(7)
+    ]
+
+
+def set_work_weekday(weekday: int, is_work: bool) -> None:
+    if weekday < 0 or weekday > 6:
+        raise ValueError("weekday 0..6 oralig‘ida bo‘lishi kerak")
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO work_weekdays (weekday, is_work)
+            VALUES (%s, %s)
+            ON CONFLICT (weekday) DO UPDATE SET is_work = EXCLUDED.is_work
+            """,
+            (weekday, is_work),
+        )
+
+
+def list_work_day_overrides(limit: int = 40) -> list[dict[str, Any]]:
+    with _connect() as conn:
+        return conn.execute(
+            """
+            SELECT work_date, is_work, note, updated_at
+            FROM work_day_overrides
+            ORDER BY work_date DESC
+            LIMIT %s
+            """,
+            (limit,),
+        ).fetchall()
+
+
+def set_work_day_override(work_date: date, is_work: bool, note: str = "") -> None:
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO work_day_overrides (work_date, is_work, note, updated_at)
+            VALUES (%s, %s, %s, NOW())
+            ON CONFLICT (work_date) DO UPDATE SET
+                is_work = EXCLUDED.is_work,
+                note = EXCLUDED.note,
+                updated_at = NOW()
+            """,
+            (work_date, is_work, note.strip()),
+        )
+
+
+def clear_work_day_override(work_date: date) -> bool:
+    with _connect() as conn:
+        row = conn.execute(
+            "DELETE FROM work_day_overrides WHERE work_date = %s RETURNING work_date",
+            (work_date,),
+        ).fetchone()
+    return row is not None
+
+
+def is_work_day(day: date) -> bool:
+    """Admin belgilagan ish kunimi yoki yo‘q."""
+    with _connect() as conn:
+        override = conn.execute(
+            "SELECT is_work FROM work_day_overrides WHERE work_date = %s",
+            (day,),
+        ).fetchone()
+        if override is not None:
+            return bool(override["is_work"])
+        weekday = day.weekday()  # Mon=0 .. Sun=6
+        row = conn.execute(
+            "SELECT is_work FROM work_weekdays WHERE weekday = %s",
+            (weekday,),
+        ).fetchone()
+    if row is None:
+        return weekday != 6
+    return bool(row["is_work"])
+
+
+def list_work_days(start: date, end: date) -> list[date]:
+    with _connect() as conn:
+        weekday_rows = conn.execute(
+            "SELECT weekday, is_work FROM work_weekdays"
+        ).fetchall()
+        override_rows = conn.execute(
+            """
+            SELECT work_date, is_work
+            FROM work_day_overrides
+            WHERE work_date BETWEEN %s AND %s
+            """,
+            (start, end),
+        ).fetchall()
+    by_weekday = {int(row["weekday"]): bool(row["is_work"]) for row in weekday_rows}
+    overrides = {row["work_date"]: bool(row["is_work"]) for row in override_rows}
+    days: list[date] = []
+    current = start
+    while current <= end:
+        if current in overrides:
+            if overrides[current]:
+                days.append(current)
+        elif by_weekday.get(current.weekday(), current.weekday() != 6):
+            days.append(current)
+        current += timedelta(days=1)
+    return days
