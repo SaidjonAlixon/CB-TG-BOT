@@ -87,9 +87,11 @@ def _finish(ws, widths: dict[int, int]) -> None:
                 cell.alignment = cell.alignment.copy(vertical="center")
 
 
-def _kpi_card(ws, row: int, col: int, title: str, value: Any, bg: str, fg: str = NAVY) -> None:
+
+def _kpi_box(ws, row: int, col: int, title: str, value: Any, bg: str, fg: str = NAVY) -> None:
+    """Oddiy 1 ustunli KPI (Kunlik/Kelganlar uchun)."""
     label = ws.cell(row, col, title)
-    label.font = _font(9, True, GRAY)
+    label.font = _font(10, True, GRAY)
     label.fill = _fill(bg)
     label.alignment = _align("center")
     label.border = _border()
@@ -98,8 +100,27 @@ def _kpi_card(ws, row: int, col: int, title: str, value: Any, bg: str, fg: str =
     val.fill = _fill(bg)
     val.alignment = _align("center")
     val.border = _border()
-    ws.row_dimensions[row].height = 18
-    ws.row_dimensions[row + 1].height = 32
+    ws.row_dimensions[row].height = 20
+    ws.row_dimensions[row + 1].height = 34
+
+
+def _kpi_card(ws, row: int, col: int, title: str, value: Any, bg: str, fg: str = NAVY) -> None:
+    """2 ustunli keng KPI — matn siqilmaydi."""
+    ws.merge_cells(start_row=row, start_column=col, end_row=row, end_column=col + 1)
+    ws.merge_cells(start_row=row + 1, start_column=col, end_row=row + 1, end_column=col + 1)
+    for c in (col, col + 1):
+        for r in (row, row + 1):
+            cell = ws.cell(r, c)
+            cell.fill = _fill(bg)
+            cell.border = _border()
+    label = ws.cell(row, col, title)
+    label.font = _font(10, True, GRAY)
+    label.alignment = _align("center")
+    val = ws.cell(row + 1, col, value)
+    val.font = _font(20, True, fg)
+    val.alignment = _align("center")
+    ws.row_dimensions[row].height = 20
+    ws.row_dimensions[row + 1].height = 36
 
 
 def _section_title(ws, row: int, text: str, max_col: int, bg: str = BLUE) -> None:
@@ -108,11 +129,10 @@ def _section_title(ws, row: int, text: str, max_col: int, bg: str = BLUE) -> Non
     cell.font = _font(12, True, WHITE)
     cell.fill = _fill(bg)
     cell.alignment = _align("left")
-    ws.row_dimensions[row].height = 24
+    ws.row_dimensions[row].height = 26
 
 
 def _dates(start: date, end: date) -> list[date]:
-    """Hisobot uchun faqat admin belgilagan ish kunlari."""
     return bot_db.list_work_days(start, end)
 
 
@@ -173,12 +193,29 @@ def _build_dashboard(
 ) -> None:
     ws = wb.active
     ws.title = "Dashboard"
-    _style_sheet(
-        ws,
-        "FILIAL ATTENDANCE — DASHBOARD",
-        8,
-        subtitle=f"Davr: {label}   |   Kunlik sana: {focus_day.strftime('%d.%m.%Y')}   |   Yangilangan: {now_local().strftime('%d.%m.%Y %H:%M')}",
+    ws.sheet_view.showGridLines = False
+    ws.freeze_panes = "A23"
+
+    for col in range(1, 13):
+        ws.cell(1, col).fill = _fill(NAVY)
+        ws.cell(2, col).fill = _fill(BLUE)
+    ws.merge_cells("A1:L1")
+    title = ws.cell(1, 1, "FILIAL ATTENDANCE")
+    title.font = _font(22, True, WHITE)
+    title.fill = _fill(NAVY)
+    title.alignment = _align("center")
+    ws.row_dimensions[1].height = 40
+
+    ws.merge_cells("A2:L2")
+    sub = ws.cell(
+        2,
+        1,
+        f"Sana: {focus_day.strftime('%d.%m.%Y')}     ·     Davr: {label}     ·     {now_local().strftime('%d.%m.%Y %H:%M')}",
     )
+    sub.font = _font(11, False, WHITE)
+    sub.fill = _fill(BLUE)
+    sub.alignment = _align("center")
+    ws.row_dimensions[2].height = 24
 
     arrived = sum(1 for row in day_rows if row["Keldi"] != "—")
     late = sum(1 for row in day_rows if row["Kelish holati"].startswith("🔴"))
@@ -187,60 +224,70 @@ def _build_dashboard(
     total_emp = len(employees)
     rate = (arrived / total_emp * 100) if total_emp else 0.0
 
-    period_arrived = sum(1 for row in daily_rows if row["Keldi"] != "—")
-    period_late = sum(1 for row in daily_rows if row["Kelish holati"].startswith("🔴"))
-    period_absent = sum(1 for row in daily_rows if row["Kelish holati"].startswith("❌"))
-    period_total = len(daily_rows)
-    period_rate = (period_arrived / period_total * 100) if period_total else 0.0
+    ws.merge_cells("A4:L4")
+    head = ws.cell(4, 1, f"BUGUNGI KO‘RSATKICHLAR — {focus_day.strftime('%d.%m.%Y')}")
+    head.font = _font(13, True, WHITE)
+    head.fill = _fill(NAVY)
+    head.alignment = _align("left")
+    ws.row_dimensions[4].height = 28
 
-    _section_title(ws, 4, f"📌 BUGUNGI KO‘RSATKICHLAR — {focus_day.strftime('%d.%m.%Y')}", 8, NAVY)
     cards = [
-        ("JAMI XODIM", total_emp, LIGHT, NAVY),
-        ("KELGAN", arrived, GREEN_BG, GREEN_FG),
-        ("VAQTIDA", on_time, GREEN_BG, GREEN_FG),
-        ("KECHIKKAN", late, ORANGE_BG, ORANGE_FG),
-        ("KELMAGAN", absent, RED_BG, RED_FG),
-        ("DAVOMAT %", f"{rate:.1f}%", YELLOW_BG, NAVY),
+        (1, "JAMI", total_emp, LIGHT, NAVY),
+        (3, "KELGAN", arrived, GREEN_BG, GREEN_FG),
+        (5, "VAQTIDA", on_time, GREEN_BG, GREEN_FG),
+        (7, "KECHIKKAN", late, ORANGE_BG, ORANGE_FG),
+        (9, "KELMAGAN", absent, RED_BG, RED_FG),
+        (11, "DAVOMAT", f"{rate:.1f}%", YELLOW_BG, NAVY),
     ]
-    for idx, (title, value, bg, fg) in enumerate(cards):
-        _kpi_card(ws, 5, idx + 1, title, value, bg, fg)
+    for col, title_text, value, bg, fg in cards:
+        _kpi_card(ws, 5, col, title_text, value, bg, fg)
 
-    _section_title(ws, 8, f"📊 DAVR BO‘YICHA YAKUN — {label}", 8, BLUE)
-    period_cards = [
-        ("XODIM-KUN", period_total, LIGHT, NAVY),
-        ("KELGAN", period_arrived, GREEN_BG, GREEN_FG),
-        ("KECHIKKAN", period_late, ORANGE_BG, ORANGE_FG),
-        ("KELMAGAN", period_absent, RED_BG, RED_FG),
-        ("DAVOMAT %", f"{period_rate:.1f}%", YELLOW_BG, NAVY),
-    ]
-    for idx, (title, value, bg, fg) in enumerate(period_cards):
-        _kpi_card(ws, 9, idx + 1, title, value, bg, fg)
+    # Bo'sh zona — grafik faqat shu joyda, jadval ustiga tushmaydi
+    for r in range(7, 21):
+        ws.row_dimensions[r].height = 18
 
-    # Chart source (hidden-ish area)
-    ws.cell(9, 7, "Kelgan").font = _font(9, True, GRAY)
-    ws.cell(9, 8, period_arrived)
-    ws.cell(10, 7, "Kechikkan").font = _font(9, True, GRAY)
-    ws.cell(10, 8, period_late)
-    ws.cell(11, 7, "Kelmagan").font = _font(9, True, GRAY)
-    ws.cell(11, 8, period_absent)
+    ws.merge_cells("A7:L7")
+    chart_head = ws.cell(7, 1, "BUGUNGI DIAGRAMMA")
+    chart_head.font = _font(12, True, WHITE)
+    chart_head.fill = _fill(BLUE)
+    chart_head.alignment = _align("left")
+    ws.row_dimensions[7].height = 24
+
+    # Chart source — o'ng tomonda yashirin
+    ws.cell(5, 14, "Tur")
+    ws.cell(5, 15, "Soni")
+    ws.cell(6, 14, "Kelgan")
+    ws.cell(6, 15, arrived)
+    ws.cell(7, 14, "Kechikkan")
+    ws.cell(7, 15, late)
+    ws.cell(8, 14, "Kelmagan")
+    ws.cell(8, 15, absent)
+    for r in range(5, 9):
+        for c in (14, 15):
+            ws.cell(r, c).font = _font(1, False, WHITE)
+            ws.cell(r, c).fill = _fill(WHITE)
 
     chart = BarChart()
     chart.type = "col"
-    chart.title = "Davomat holati (davr)"
-    chart.y_axis.title = "Soni"
     chart.style = 10
-    data = Reference(ws, min_col=8, min_row=9, max_row=11)
-    cats = Reference(ws, min_col=7, min_row=9, max_row=11)
-    chart.add_data(data, titles_from_data=False)
+    chart.title = None
+    chart.legend = None
+    data = Reference(ws, min_col=15, min_row=5, max_row=8)
+    cats = Reference(ws, min_col=14, min_row=6, max_row=8)
+    chart.add_data(data, titles_from_data=True)
     chart.set_categories(cats)
-    chart.shape = 4
     chart.height = 8
-    chart.width = 12
-    ws.add_chart(chart, "A12")
+    chart.width = 16
+    ws.add_chart(chart, "A8")
 
-    # Branch table
-    table_start = 22
-    _section_title(ws, table_start, "🏢 FILIALLAR KESIMIDA (BUGUN)", 8, ACCENT)
+    table_start = 21
+    ws.merge_cells(start_row=table_start, start_column=1, end_row=table_start, end_column=8)
+    sec = ws.cell(table_start, 1, f"FILIALLAR — {focus_day.strftime('%d.%m.%Y')}")
+    sec.font = _font(13, True, WHITE)
+    sec.fill = _fill(BLUE)
+    sec.alignment = _align("left")
+    ws.row_dimensions[table_start].height = 28
+
     headers = ["№", "Filial", "Xodimlar", "Kelgan", "Kechikkan", "Kelmagan", "Davomat %", "Holat"]
     _header(ws, table_start + 1, headers)
 
@@ -255,17 +302,20 @@ def _build_dashboard(
         l = sum(1 for row in rows if row["Kelish holati"].startswith("🔴"))
         ab = sum(1 for row in rows if row["Kelish holati"].startswith("❌"))
         pct = (a / emp_count * 100) if emp_count else 0.0
-        status = "Yaxshi" if pct >= 90 else ("O‘rtacha" if pct >= 70 else "Past")
+        status = "Yaxshi" if pct >= 90 else ("O'rtacha" if pct >= 70 else "Past")
         values = [idx, name, emp_count, a, l, ab, f"{pct:.1f}%", status]
         for col, value in enumerate(values, 1):
             cell = ws.cell(r, col, value)
             cell.border = _border()
             cell.alignment = _align("center" if col != 2 else "left")
+            cell.font = _font(11, False, NAVY)
+            if r % 2 == 0:
+                cell.fill = _fill(LIGHT)
             if col == 8:
                 if status == "Yaxshi":
                     cell.fill = _fill(GREEN_BG)
                     cell.font = _font(11, True, GREEN_FG)
-                elif status == "O‘rtacha":
+                elif status == "O'rtacha":
                     cell.fill = _fill(YELLOW_BG)
                     cell.font = _font(11, True, ORANGE_FG)
                 else:
@@ -273,21 +323,28 @@ def _build_dashboard(
                     cell.font = _font(11, True, RED_FG)
         r += 1
 
-    guide_row = r + 1
-    _section_title(ws, guide_row, "ℹ️ QANDAY O‘QILADI", 8, NAVY)
-    tips = [
-        "• Kunlik list — tanlangan sanadagi kelganlar va kelmaganlar.",
-        "• Kelganlar list — faqat bugun (hisobot sanasi) kelgan xodimlar, vaqt bilan.",
-        "• Dashboard foizi = Kelgan / Jami xodim. Dam olish kunida kelmagan = 0.",
-        "• Excel hisobotlari faqat admin belgilagan ish kunlari asosida hisoblanadi.",
-    ]
-    for i, tip in enumerate(tips):
-        cell = ws.cell(guide_row + 1 + i, 1, tip)
-        ws.merge_cells(start_row=guide_row + 1 + i, start_column=1, end_row=guide_row + 1 + i, end_column=8)
-        cell.font = _font(10, False, GRAY)
-        cell.fill = _fill(LIGHT)
+    if not branch_groups:
+        ws.cell(r, 1, "Bu sana uchun ma'lumot yo'q.").font = _font(11, False, GRAY)
 
-    _finish(ws, {1: 8, 2: 28, 3: 12, 4: 12, 5: 12, 6: 12, 7: 12, 8: 12})
+    _finish(
+        ws,
+        {
+            1: 11,
+            2: 32,
+            3: 11,
+            4: 11,
+            5: 11,
+            6: 11,
+            7: 12,
+            8: 12,
+            9: 11,
+            10: 11,
+            11: 12,
+            12: 12,
+            14: 2,
+            15: 2,
+        },
+    )
 
 
 def _build_kunlik(
@@ -308,11 +365,11 @@ def _build_kunlik(
     absent_rows = [row for row in day_rows if row["Kelish holati"].startswith("❌")]
     late_rows = [row for row in day_rows if row["Kelish holati"].startswith("🔴")]
 
-    _kpi_card(ws, 4, 1, "SANA", date_label, LIGHT, NAVY)
-    _kpi_card(ws, 4, 2, "JAMI", len(day_rows), LIGHT, NAVY)
-    _kpi_card(ws, 4, 3, "KELGAN", len(arrived_rows), GREEN_BG, GREEN_FG)
-    _kpi_card(ws, 4, 4, "KECHIKKAN", len(late_rows), ORANGE_BG, ORANGE_FG)
-    _kpi_card(ws, 4, 5, "KELMAGAN", len(absent_rows), RED_BG, RED_FG)
+    _kpi_box(ws, 4, 1, "SANA", date_label, LIGHT, NAVY)
+    _kpi_box(ws, 4, 2, "JAMI", len(day_rows), LIGHT, NAVY)
+    _kpi_box(ws, 4, 3, "KELGAN", len(arrived_rows), GREEN_BG, GREEN_FG)
+    _kpi_box(ws, 4, 4, "KECHIKKAN", len(late_rows), ORANGE_BG, ORANGE_FG)
+    _kpi_box(ws, 4, 5, "KELMAGAN", len(absent_rows), RED_BG, RED_FG)
 
     # Kelganlar section
     start = 7
@@ -372,12 +429,12 @@ def _build_kelganlar(wb: Workbook, focus_day: date, day_rows: list[dict[str, Any
         subtitle=f"Sana: {date_label}   |   Jami kelgan: {len(arrived_rows)} ta",
     )
 
-    _kpi_card(ws, 4, 1, "SANA", date_label, LIGHT, NAVY)
-    _kpi_card(ws, 4, 2, "KELGANLAR", len(arrived_rows), GREEN_BG, GREEN_FG)
+    _kpi_box(ws, 4, 1, "SANA", date_label, LIGHT, NAVY)
+    _kpi_box(ws, 4, 2, "KELGANLAR", len(arrived_rows), GREEN_BG, GREEN_FG)
     on_time = sum(1 for row in arrived_rows if row["Kelish holati"].startswith("🟢"))
     late = sum(1 for row in arrived_rows if row["Kelish holati"].startswith("🔴"))
-    _kpi_card(ws, 4, 3, "VAQTIDA", on_time, GREEN_BG, GREEN_FG)
-    _kpi_card(ws, 4, 4, "KECHIKKAN", late, ORANGE_BG, ORANGE_FG)
+    _kpi_box(ws, 4, 3, "VAQTIDA", on_time, GREEN_BG, GREEN_FG)
+    _kpi_box(ws, 4, 4, "KECHIKKAN", late, ORANGE_BG, ORANGE_FG)
 
     headers = ["№", "Sana", "Filial", "F.I.Sh", "Lavozim", "Smena", "Keldi", "Ketdi", "Holat"]
     _header(ws, 7, headers)
