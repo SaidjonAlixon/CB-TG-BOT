@@ -173,13 +173,133 @@ def _write_rows(ws, rows: list[dict[str, Any]], headers: list[str], start_row: i
             cell.alignment = _align("center" if header != "F.I.Sh" else "left")
             if header == "Sana" and isinstance(cell.value, date):
                 cell.number_format = "dd.mm.yyyy"
-            holat = str(row.get("Kelish holati", row.get("Holat", "")))
-            if holat.startswith("🟢") or holat.startswith("✅"):
-                cell.fill = _fill(GREEN_BG)
-            elif holat.startswith("🔴") or holat.startswith("❌"):
+            _apply_status_colors(cell, header, row)
+
+
+def _status_colors(text: str) -> tuple[str | None, str | None]:
+    value = str(text or "")
+    if value.startswith("🟢") or value.startswith("✅"):
+        return GREEN_BG, GREEN_FG
+    if value.startswith("🔴") or value.startswith("❌"):
+        return RED_BG, RED_FG
+    if value.startswith("🟠") or value.startswith("⚠️"):
+        return ORANGE_BG, ORANGE_FG
+    return None, None
+
+
+def _is_nonzero_clock(value: Any) -> bool:
+    text = str(value or "").strip()
+    return bool(text) and text not in {"—", "00:00", "0:00"}
+
+
+ATTENDANCE_DETAIL_HEADERS = [
+    "№",
+    "Filial",
+    "F.I.Sh",
+    "Lavozim",
+    "Smena",
+    "Keldi",
+    "Kelish holati",
+    "Ketdi",
+    "Ketish holati",
+    "Ishlagan vaqt",
+    "Kechikish (soat)",
+    "Erta ketish (soat)",
+]
+
+
+def _apply_status_colors(cell, header: str, row: dict[str, Any]) -> None:
+    """Ustun bo‘yicha tushunarli ranglar: vaqtida / kechikkan / erta ketgan / kelmagan."""
+    arrival = str(row.get("Kelish holati", ""))
+    departure = str(row.get("Ketish holati", ""))
+
+    if header in {"Kelish holati", "Holat"}:
+        bg, fg = _status_colors(arrival)
+        if bg:
+            cell.fill = _fill(bg)
+            cell.font = _font(11, True, fg or NAVY)
+        return
+
+    if header == "Ketish holati":
+        bg, fg = _status_colors(departure)
+        if bg:
+            cell.fill = _fill(bg)
+            cell.font = _font(11, True, fg or NAVY)
+        return
+
+    if header == "Kechikish (soat)" and (_is_nonzero_clock(row.get(header)) or arrival.startswith("🔴")):
+        cell.fill = _fill(RED_BG)
+        cell.font = _font(11, True, RED_FG)
+        return
+
+    if header == "Erta ketish (soat)" and (
+        _is_nonzero_clock(row.get(header)) or departure.startswith("🟠")
+    ):
+        cell.fill = _fill(ORANGE_BG)
+        cell.font = _font(11, True, ORANGE_FG)
+        return
+
+    if header in {"Keldi", "Ketdi", "Ishlagan vaqt"}:
+        if arrival.startswith("❌"):
+            cell.fill = _fill(RED_BG)
+        elif arrival.startswith("🔴"):
+            cell.fill = _fill(RED_BG)
+        elif arrival.startswith("🟢"):
+            cell.fill = _fill(GREEN_BG)
+
+
+def _write_attendance_detail(
+    ws,
+    start_row: int,
+    rows: list[dict[str, Any]],
+    *,
+    include_sana: bool = False,
+    focus_day: date | None = None,
+) -> int:
+    """To‘liq davomat ustunlari bilan jadval yozadi. Keyingi bo‘sh qator indeksini qaytaradi."""
+    headers = (["№", "Sana"] + ATTENDANCE_DETAIL_HEADERS[1:]) if include_sana else list(ATTENDANCE_DETAIL_HEADERS)
+    _header(ws, start_row, headers)
+    if not rows:
+        return start_row + 2
+
+    for idx, row in enumerate(rows, 1):
+        r = start_row + idx
+        values: list[Any] = [idx]
+        if include_sana:
+            values.append(focus_day or row.get("Sana"))
+        values.extend(
+            [
+                row["Filial nomi"],
+                row["F.I.Sh"],
+                row["Lavozim"],
+                row["Smena"],
+                row["Keldi"],
+                row["Kelish holati"],
+                row["Ketdi"],
+                row["Ketish holati"],
+                row["Ishlagan vaqt"],
+                row["Kechikish (soat)"],
+                row["Erta ketish (soat)"],
+            ]
+        )
+        late = str(row["Kelish holati"]).startswith("🔴")
+        absent = str(row["Kelish holati"]).startswith("❌")
+        for col, (header, value) in enumerate(zip(headers, values), 1):
+            cell = ws.cell(r, col, value)
+            cell.border = _border()
+            cell.alignment = _align("left" if header == "F.I.Sh" else "center")
+            cell.font = _font(11, False, NAVY)
+            if header == "Sana" and isinstance(value, date):
+                cell.number_format = "dd.mm.yyyy"
+            # Qator foni: kechikkan qizil, vaqtida yashil, kelmagan qizil
+            if absent:
                 cell.fill = _fill(RED_BG)
-            elif holat.startswith("🟠"):
-                cell.fill = _fill(ORANGE_BG)
+            elif late:
+                cell.fill = _fill(RED_BG)
+            else:
+                cell.fill = _fill(GREEN_BG)
+            _apply_status_colors(cell, header, row)
+    return start_row + len(rows) + 2
 
 
 def _build_dashboard(
@@ -260,6 +380,40 @@ def _build_dashboard(
     )
 
 
+def _detail_widths(*, with_sana: bool = False) -> dict[int, int]:
+    base = {
+        1: 6,
+        2: 24,
+        3: 26,
+        4: 16,
+        5: 11,
+        6: 10,
+        7: 16,
+        8: 10,
+        9: 16,
+        10: 14,
+        11: 14,
+        12: 14,
+    }
+    if not with_sana:
+        return base
+    return {
+        1: 6,
+        2: 12,
+        3: 24,
+        4: 26,
+        5: 16,
+        6: 11,
+        7: 10,
+        8: 16,
+        9: 10,
+        10: 16,
+        11: 14,
+        12: 14,
+        13: 14,
+    }
+
+
 def _build_kunlik(
     wb: Workbook,
     focus_day: date,
@@ -267,10 +421,11 @@ def _build_kunlik(
 ) -> None:
     ws = wb.create_sheet("Kunlik", 1)
     date_label = focus_day.strftime("%d.%m.%Y")
+    cols = len(ATTENDANCE_DETAIL_HEADERS)
     _style_sheet(
         ws,
         f"KUNLIK HISOBOT — {date_label}",
-        8,
+        cols,
         subtitle=f"Sana: {date_label}   |   Ish kuni: {'Ha' if bot_db.is_work_day(focus_day) else 'Yo‘q'}",
     )
 
@@ -284,61 +439,37 @@ def _build_kunlik(
     _kpi_box(ws, 4, 4, "KECHIKKAN", len(late_rows), ORANGE_BG, ORANGE_FG)
     _kpi_box(ws, 4, 5, "KELMAGAN", len(absent_rows), RED_BG, RED_FG)
 
-    # Kelganlar section
     start = 7
-    _section_title(ws, start, f"✅ BUGUN KELGANLAR — {date_label}", 8, GREEN_FG)
-    arrived_headers = ["№", "Filial", "F.I.Sh", "Lavozim", "Smena", "Keldi", "Holat", "Kechikish"]
-    _header(ws, start + 1, arrived_headers)
+    _section_title(ws, start, f"✅ BUGUN KELGANLAR — {date_label}", cols, GREEN_FG)
     if arrived_rows:
-        for idx, row in enumerate(arrived_rows, 1):
-            values = [
-                idx,
-                row["Filial nomi"],
-                row["F.I.Sh"],
-                row["Lavozim"],
-                row["Smena"],
-                row["Keldi"],
-                row["Kelish holati"],
-                row["Kechikish (soat)"],
-            ]
-            r = start + 1 + idx
-            for col, value in enumerate(values, 1):
-                cell = ws.cell(r, col, value)
-                cell.border = _border()
-                cell.alignment = _align("center" if col != 3 else "left")
-                cell.fill = _fill(GREEN_BG if not str(row["Kelish holati"]).startswith("🔴") else ORANGE_BG)
-        next_row = start + 2 + len(arrived_rows) + 1
+        next_row = _write_attendance_detail(ws, start + 1, arrived_rows)
     else:
         ws.cell(start + 2, 1, "Bugun kelganlar yo‘q.").font = _font(11, False, GRAY)
         next_row = start + 4
 
-    _section_title(ws, next_row, f"❌ BUGUN KELMAGANLAR — {date_label}", 8, RED_FG)
-    absent_headers = ["№", "Filial", "F.I.Sh", "Lavozim", "Smena", "Holat"]
-    _header(ws, next_row + 1, absent_headers)
+    _section_title(ws, next_row, f"❌ BUGUN KELMAGANLAR — {date_label}", cols, RED_FG)
     if absent_rows:
-        for idx, row in enumerate(absent_rows, 1):
-            values = [idx, row["Filial nomi"], row["F.I.Sh"], row["Lavozim"], row["Smena"], "❌ Kelmagan"]
-            r = next_row + 1 + idx
-            for col, value in enumerate(values, 1):
-                cell = ws.cell(r, col, value)
-                cell.border = _border()
-                cell.alignment = _align("center" if col != 3 else "left")
-                cell.fill = _fill(RED_BG)
+        _write_attendance_detail(ws, next_row + 1, absent_rows)
     else:
-        msg = "Bugun barcha xodimlar kelgan." if bot_db.is_work_day(focus_day) else "Bugun ish kuni emas — kelmaganlar hisoblanmaydi."
+        msg = (
+            "Bugun barcha xodimlar kelgan."
+            if bot_db.is_work_day(focus_day)
+            else "Bugun ish kuni emas — kelmaganlar hisoblanmaydi."
+        )
         ws.cell(next_row + 2, 1, msg).font = _font(11, False, GRAY)
 
-    _finish(ws, {1: 6, 2: 24, 3: 26, 4: 16, 5: 12, 6: 12, 7: 16, 8: 12})
+    _finish(ws, _detail_widths())
 
 
 def _build_kelganlar(wb: Workbook, focus_day: date, day_rows: list[dict[str, Any]]) -> None:
     ws = wb.create_sheet("Kelganlar", 2)
     date_label = focus_day.strftime("%d.%m.%Y")
     arrived_rows = [row for row in day_rows if row["Keldi"] != "—"]
+    cols = len(ATTENDANCE_DETAIL_HEADERS) + 1  # + Sana
     _style_sheet(
         ws,
         f"BUGUN KELGANLAR — {date_label}",
-        9,
+        cols,
         subtitle=f"Sana: {date_label}   |   Jami kelgan: {len(arrived_rows)} ta",
     )
 
@@ -349,34 +480,13 @@ def _build_kelganlar(wb: Workbook, focus_day: date, day_rows: list[dict[str, Any
     _kpi_box(ws, 4, 3, "VAQTIDA", on_time, GREEN_BG, GREEN_FG)
     _kpi_box(ws, 4, 4, "KECHIKKAN", late, ORANGE_BG, ORANGE_FG)
 
-    headers = ["№", "Sana", "Filial", "F.I.Sh", "Lavozim", "Smena", "Keldi", "Ketdi", "Holat"]
-    _header(ws, 7, headers)
-    for idx, row in enumerate(arrived_rows, 1):
-        values = [
-            idx,
-            focus_day,
-            row["Filial nomi"],
-            row["F.I.Sh"],
-            row["Lavozim"],
-            row["Smena"],
-            row["Keldi"],
-            row["Ketdi"],
-            row["Kelish holati"],
-        ]
-        for col, value in enumerate(values, 1):
-            cell = ws.cell(7 + idx, col, value)
-            cell.border = _border()
-            cell.alignment = _align("center" if col != 4 else "left")
-            if col == 2:
-                cell.number_format = "dd.mm.yyyy"
-            if str(row["Kelish holati"]).startswith("🔴"):
-                cell.fill = _fill(ORANGE_BG)
-            else:
-                cell.fill = _fill(GREEN_BG)
-    if not arrived_rows:
+    if arrived_rows:
+        _write_attendance_detail(ws, 7, arrived_rows, include_sana=True, focus_day=focus_day)
+    else:
+        _header(ws, 7, ["№", "Sana"] + ATTENDANCE_DETAIL_HEADERS[1:])
         ws.cell(8, 1, f"{date_label} sanasida kelganlar yo‘q.").font = _font(11, False, GRAY)
 
-    _finish(ws, {1: 6, 2: 12, 3: 22, 4: 26, 5: 16, 6: 12, 7: 10, 8: 10, 9: 16})
+    _finish(ws, _detail_widths(with_sana=True))
 
 
 def build_report(start: date, end: date, label: str) -> BytesIO:
