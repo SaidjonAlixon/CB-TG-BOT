@@ -28,7 +28,7 @@ from telegram.ext import (
 )
 
 import bot_db
-from excel_report import build_report
+from excel_report import build_list_report, build_report
 from shifts import (
     LOCAL_TZ,
     arrival_result,
@@ -822,22 +822,15 @@ async def admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE, value: 
         await branches(message)
         return
     if value == "👥 XODIMLAR":
-        employees = bot_db.get_all_employees()
-        if not employees:
-            await message.reply_text("Hozircha xodimlar ro‘yxatdan o‘tmagan.")
-            return
-        lines = ["👥 XODIMLAR", ""]
-        for idx, employee in enumerate(employees[:100], 1):
-            lines.append(f"{idx}. {employee['full_name']} — {employee['branch_name']} — {employee['shift']}-smena")
-        await message.reply_text("\n".join(lines))
+        await send_list_excel(message, "employees")
         return
     if value == "🔴 KECHIKKANLAR":
-        await status_list(message, "late")
+        await send_list_excel(message, "late")
         return
     if value == "❌ KELMAGANLAR":
         if not is_full:
             return
-        await status_list(message, "absent")
+        await send_list_excel(message, "absent")
         return
     if value == "⚙️ SOZLAMALAR":
         if not is_full:
@@ -1066,7 +1059,7 @@ async def show_branch(message, branch_id: int) -> None:
     await message.reply_text("\n".join(lines))
 
 
-async def status_list(message, kind: str) -> None:
+async def send_list_excel(message, kind: str) -> None:
     today = now_local().date()
     if kind == "absent" and not bot_db.is_work_day(today):
         await message.reply_text(
@@ -1074,21 +1067,20 @@ async def status_list(message, kind: str) -> None:
             "Bugun ish kuni emas — kelmaganlar hisoblanmaydi."
         )
         return
-    rows = bot_db.get_today_rows(today)
-    if kind == "late":
-        selected = [row for row in rows if row.get("arrival_status") == "LATE"]
-        title = "🔴 BUGUN KECHIKKANLAR"
-    else:
-        selected = [row for row in rows if not row.get("arrival_at")]
-        title = "❌ BUGUN KELMAGANLAR"
-    if not selected:
-        await message.reply_text(f"{title}\n\nRo‘yxat bo‘sh.")
-        return
-    lines = [title, ""]
-    for idx, row in enumerate(selected, 1):
-        extra = f"+{fmt_duration(row['late_minutes'])}" if kind == "late" else "Kelmagan"
-        lines.append(f"{idx}. 👤 {row['full_name']}\n🏢 {row['branch_name']}\n👔 {row['position']}\n🕐 {fmt_time(row.get('arrival_at'))} — {extra}\n")
-    await message.reply_text("\n".join(lines))
+
+    labels = {
+        "employees": ("Xodimlar", "XODIMLAR"),
+        "late": ("Kechikkanlar", "KECHIKKANLAR"),
+        "absent": ("Kelmaganlar", "KELMAGANLAR"),
+    }
+    sheet_label, caption_label = labels[kind]
+    await message.reply_text(f"⏳ {caption_label} Excel tayyorlanmoqda...")
+    output = await asyncio.to_thread(build_list_report, kind)
+    filename = f"{sheet_label}_{today.strftime('%d-%m-%Y')}.xlsx"
+    await message.reply_document(
+        document=InputFile(output, filename=filename),
+        caption=f"📎 {caption_label} — {today.strftime('%d.%m.%Y')}",
+    )
 
 
 async def send_report(message, kind: str) -> None:

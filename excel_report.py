@@ -519,3 +519,107 @@ def build_report(start: date, end: date, label: str) -> BytesIO:
     wb.save(output)
     output.seek(0)
     return output
+
+
+def build_list_report(kind: str) -> BytesIO:
+    """Bitta listli Excel: employees | late | absent."""
+    today = now_local().date()
+    date_label = today.strftime("%d.%m.%Y")
+
+    if kind == "employees":
+        rows = bot_db.get_all_employees()
+        title = "XODIMLAR RO‘YXATI"
+        sheet_name = "Xodimlar"
+        headers = ["№", "Filial kodi", "Filial", "F.I.Sh", "Telefon", "Lavozim", "Smena"]
+        data = [
+            [
+                idx,
+                row.get("branch_code", ""),
+                row.get("branch_name", ""),
+                row.get("full_name", ""),
+                row.get("phone") or "—",
+                row.get("position") or "—",
+                f"{row.get('shift')}-smena",
+            ]
+            for idx, row in enumerate(rows, 1)
+        ]
+        widths = {1: 6, 2: 14, 3: 28, 4: 26, 5: 16, 6: 18, 7: 12}
+        empty_msg = "Hozircha xodimlar ro‘yxatdan o‘tmagan."
+    elif kind == "late":
+        rows = [row for row in bot_db.get_today_rows(today) if row.get("arrival_status") == "LATE"]
+        title = f"KECHIKKANLAR — {date_label}"
+        sheet_name = "Kechikkanlar"
+        headers = ["№", "Filial", "F.I.Sh", "Lavozim", "Smena", "Keldi", "Kechikish"]
+        data = [
+            [
+                idx,
+                row.get("branch_name", ""),
+                row.get("full_name", ""),
+                row.get("position") or "—",
+                f"{row.get('shift')}-smena",
+                fmt_time(row.get("arrival_at")),
+                fmt_hours_clock(row.get("late_minutes") or 0),
+            ]
+            for idx, row in enumerate(rows, 1)
+        ]
+        widths = {1: 6, 2: 28, 3: 26, 4: 18, 5: 12, 6: 12, 7: 12}
+        empty_msg = "Bugun kechikkanlar yo‘q."
+    elif kind == "absent":
+        rows = [row for row in bot_db.get_today_rows(today) if not row.get("arrival_at")]
+        title = f"KELMAGANLAR — {date_label}"
+        sheet_name = "Kelmaganlar"
+        headers = ["№", "Filial", "F.I.Sh", "Lavozim", "Smena", "Holat"]
+        data = [
+            [
+                idx,
+                row.get("branch_name", ""),
+                row.get("full_name", ""),
+                row.get("position") or "—",
+                f"{row.get('shift')}-smena",
+                "Kelmagan",
+            ]
+            for idx, row in enumerate(rows, 1)
+        ]
+        widths = {1: 6, 2: 28, 3: 26, 4: 18, 5: 12, 6: 14}
+        empty_msg = "Bugun kelmaganlar yo‘q."
+    else:
+        raise ValueError(f"Unknown list kind: {kind}")
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = sheet_name
+    _style_sheet(
+        ws,
+        title,
+        len(headers),
+        subtitle=f"Sana: {date_label}   ·   Jami: {len(data)} ta",
+    )
+    _header(ws, 3, headers)
+
+    if not data:
+        cell = ws.cell(4, 1, empty_msg)
+        ws.merge_cells(start_row=4, start_column=1, end_row=4, end_column=len(headers))
+        cell.font = _font(11, False, GRAY)
+        cell.alignment = _align("left")
+    else:
+        name_col = headers.index("F.I.Sh") + 1
+        for r_idx, values in enumerate(data, 4):
+            for c_idx, value in enumerate(values, 1):
+                cell = ws.cell(r_idx, c_idx, value)
+                cell.border = _border()
+                cell.alignment = _align("left" if c_idx == name_col else "center")
+                cell.font = _font(11, False, NAVY)
+                if r_idx % 2 == 0:
+                    cell.fill = _fill(LIGHT)
+                if kind == "late" and c_idx == 7:
+                    cell.fill = _fill(ORANGE_BG)
+                    cell.font = _font(11, True, ORANGE_FG)
+                if kind == "absent" and c_idx == 6:
+                    cell.fill = _fill(RED_BG)
+                    cell.font = _font(11, True, RED_FG)
+
+    _finish(ws, widths)
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output
