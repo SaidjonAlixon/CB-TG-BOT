@@ -6,7 +6,6 @@ from io import BytesIO
 from typing import Any
 
 from openpyxl import Workbook
-from openpyxl.chart import BarChart, Reference
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
@@ -187,14 +186,14 @@ def _build_dashboard(
     wb: Workbook,
     label: str,
     focus_day: date,
-    daily_rows: list[dict[str, Any]],
+    _daily_rows: list[dict[str, Any]],
     employees: list[dict[str, Any]],
     day_rows: list[dict[str, Any]],
 ) -> None:
     ws = wb.active
     ws.title = "Dashboard"
     ws.sheet_view.showGridLines = False
-    ws.freeze_panes = "A23"
+    ws.freeze_panes = "A7"
 
     for col in range(1, 13):
         ws.cell(1, col).fill = _fill(NAVY)
@@ -242,95 +241,11 @@ def _build_dashboard(
     for col, title_text, value, bg, fg in cards:
         _kpi_card(ws, 5, col, title_text, value, bg, fg)
 
-    # Bo'sh zona — grafik faqat shu joyda, jadval ustiga tushmaydi
-    for r in range(7, 21):
-        ws.row_dimensions[r].height = 18
-
-    ws.merge_cells("A7:L7")
-    chart_head = ws.cell(7, 1, "BUGUNGI DIAGRAMMA")
-    chart_head.font = _font(12, True, WHITE)
-    chart_head.fill = _fill(BLUE)
-    chart_head.alignment = _align("left")
-    ws.row_dimensions[7].height = 24
-
-    # Chart source — o'ng tomonda yashirin
-    ws.cell(5, 14, "Tur")
-    ws.cell(5, 15, "Soni")
-    ws.cell(6, 14, "Kelgan")
-    ws.cell(6, 15, arrived)
-    ws.cell(7, 14, "Kechikkan")
-    ws.cell(7, 15, late)
-    ws.cell(8, 14, "Kelmagan")
-    ws.cell(8, 15, absent)
-    for r in range(5, 9):
-        for c in (14, 15):
-            ws.cell(r, c).font = _font(1, False, WHITE)
-            ws.cell(r, c).fill = _fill(WHITE)
-
-    chart = BarChart()
-    chart.type = "col"
-    chart.style = 10
-    chart.title = None
-    chart.legend = None
-    data = Reference(ws, min_col=15, min_row=5, max_row=8)
-    cats = Reference(ws, min_col=14, min_row=6, max_row=8)
-    chart.add_data(data, titles_from_data=True)
-    chart.set_categories(cats)
-    chart.height = 8
-    chart.width = 16
-    ws.add_chart(chart, "A8")
-
-    table_start = 21
-    ws.merge_cells(start_row=table_start, start_column=1, end_row=table_start, end_column=8)
-    sec = ws.cell(table_start, 1, f"FILIALLAR — {focus_day.strftime('%d.%m.%Y')}")
-    sec.font = _font(13, True, WHITE)
-    sec.fill = _fill(BLUE)
-    sec.alignment = _align("left")
-    ws.row_dimensions[table_start].height = 28
-
-    headers = ["№", "Filial", "Xodimlar", "Kelgan", "Kechikkan", "Kelmagan", "Davomat %", "Holat"]
-    _header(ws, table_start + 1, headers)
-
-    branch_groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for row in day_rows:
-        branch_groups[row["Filial nomi"]].append(row)
-
-    r = table_start + 2
-    for idx, (name, rows) in enumerate(sorted(branch_groups.items()), 1):
-        emp_count = len(rows)
-        a = sum(1 for row in rows if row["Keldi"] != "—")
-        l = sum(1 for row in rows if row["Kelish holati"].startswith("🔴"))
-        ab = sum(1 for row in rows if row["Kelish holati"].startswith("❌"))
-        pct = (a / emp_count * 100) if emp_count else 0.0
-        status = "Yaxshi" if pct >= 90 else ("O'rtacha" if pct >= 70 else "Past")
-        values = [idx, name, emp_count, a, l, ab, f"{pct:.1f}%", status]
-        for col, value in enumerate(values, 1):
-            cell = ws.cell(r, col, value)
-            cell.border = _border()
-            cell.alignment = _align("center" if col != 2 else "left")
-            cell.font = _font(11, False, NAVY)
-            if r % 2 == 0:
-                cell.fill = _fill(LIGHT)
-            if col == 8:
-                if status == "Yaxshi":
-                    cell.fill = _fill(GREEN_BG)
-                    cell.font = _font(11, True, GREEN_FG)
-                elif status == "O'rtacha":
-                    cell.fill = _fill(YELLOW_BG)
-                    cell.font = _font(11, True, ORANGE_FG)
-                else:
-                    cell.fill = _fill(RED_BG)
-                    cell.font = _font(11, True, RED_FG)
-        r += 1
-
-    if not branch_groups:
-        ws.cell(r, 1, "Bu sana uchun ma'lumot yo'q.").font = _font(11, False, GRAY)
-
     _finish(
         ws,
         {
             1: 11,
-            2: 32,
+            2: 11,
             3: 11,
             4: 11,
             5: 11,
@@ -341,8 +256,6 @@ def _build_dashboard(
             10: 11,
             11: 12,
             12: 12,
-            14: 2,
-            15: 2,
         },
     )
 
